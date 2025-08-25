@@ -1,0 +1,9 @@
+flask==3.0.0
+flask-cors==6.0.1
+gunicorn==23.0.0
+numpy==2.3.2
+MetaTrader5==5.0.5200
+pandas==2.2.3
+werkzeug==3.0.6
+python-dotenv
+tzlocal

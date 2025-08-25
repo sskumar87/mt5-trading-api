@@ -18,13 +18,13 @@ class RangeService:
         self.mt5_service = mt5_service
         self.cache = {}  # In-memory cache for calculated ranges
         self.instrument_map = {
-            "XAUUSD": ("XAUUSD", 1.5),
+            "XAUUSD": ("XAUUSD+", 1.5),
             "BTCUSD": ("BTCUSD", 50),
             "ETHUSD": ("ETHUSD", 5),
             "NAS100": ("NAS100", 5),
-            "GBPUSD": ("GBPUSD", 0.00030),
-            "EURUSD": ("EURUSD", 0.00030),
-            "USDJPY": ("USDJPY", 0.003)
+            "GBPUSD": ("GBPUSD+", 0.00030),
+            "EURUSD": ("EURUSD+", 0.00030),
+            "USDJPY": ("USDJPY+", 0.003)
         }
     
     def get_cache_key(self, symbol: str, timeframe: int, bars: int) -> str:
