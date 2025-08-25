@@ -8,6 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from routes.account_routes import account_bp
 from routes.trading_routes import trading_bp
 from routes.market_data_routes import market_data_bp
+from routes.range_routes import range_bp
 
 # Import error handlers
 from utils.error_handlers import register_error_handlers
@@ -40,6 +41,7 @@ def create_app():
     app.register_blueprint(account_bp, url_prefix='/api/account')
     app.register_blueprint(trading_bp, url_prefix='/api/trading')
     app.register_blueprint(market_data_bp, url_prefix='/api/market')
+    app.register_blueprint(range_bp, url_prefix='/api/ranges')
     
     # Register error handlers
     register_error_handlers(app)

@@ -135,6 +135,50 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Range Detection Card -->
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <i data-feather="box" class="me-2 text-secondary"></i>
+                                    <h5 class="card-title mb-0">Range Detection</h5>
+                                </div>
+                                <p class="card-text text-muted">
+                                    Detect trading ranges with in-memory caching for fast analysis.
+                                </p>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-secondary" onclick="getRanges()">
+                                        <i data-feather="target" class="me-1"></i>
+                                        Detect Ranges
+                                    </button>
+                                </div>
+                                <div id="range-data" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cache Status Card -->
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <i data-feather="database" class="me-2 text-info"></i>
+                                    <h5 class="card-title mb-0">Cache Status</h5>
+                                </div>
+                                <p class="card-text text-muted">
+                                    View cached range calculations and manage memory usage.
+                                </p>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-info" onclick="getCacheStatus()">
+                                        <i data-feather="eye" class="me-1"></i>
+                                        View Cache
+                                    </button>
+                                </div>
+                                <div id="cache-data" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- API Endpoints Section -->
@@ -168,6 +212,13 @@
                                     <li><code class="text-primary">GET</code> <code>/api/market/symbols</code></li>
                                     <li><code class="text-primary">GET</code> <code>/api/market/tick/{symbol}</code></li>
                                     <li><code class="text-primary">GET</code> <code>/api/market/rates/{symbol}</code></li>
+                                </ul>
+                                
+                                <h6 class="fw-bold text-secondary mt-3">Range Detection</h6>
+                                <ul class="list-unstyled">
+                                    <li><code class="text-primary">GET</code> <code>/api/ranges/fetch_data</code></li>
+                                    <li><code class="text-primary">GET</code> <code>/api/ranges/cache/status</code></li>
+                                    <li><code class="text-success">POST</code> <code>/api/ranges/quick_scan</code></li>
                                 </ul>
                                 
                                 <h6 class="fw-bold text-secondary mt-3">System</h6>
@@ -334,6 +385,76 @@
                 }
             } catch (error) {
                 marketDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i data-feather="x-circle" class="me-1"></i>
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+            feather.replace();
+        }
+
+        async function getRanges() {
+            const rangeDiv = document.getElementById('range-data');
+            rangeDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Loading ranges...';
+            
+            try {
+                const response = await fetch('/api/ranges/fetch_data?symbol=EURUSD&tf=5&candles=1000');
+                const data = await response.json();
+                
+                if (data.success) {
+                    rangeDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <i data-feather="check-circle" class="me-1"></i>
+                            Found ${data.merged_ranges_count} ranges for ${data.symbol}
+                            ${data.cached ? '<br><small>From cache</small>' : ''}
+                        </div>
+                    `;
+                } else {
+                    rangeDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i data-feather="alert-triangle" class="me-1"></i>
+                            ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                rangeDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i data-feather="x-circle" class="me-1"></i>
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+            feather.replace();
+        }
+
+        async function getCacheStatus() {
+            const cacheDiv = document.getElementById('cache-data');
+            cacheDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Loading cache status...';
+            
+            try {
+                const response = await fetch('/api/ranges/cache/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    cacheDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <i data-feather="database" class="me-1"></i>
+                            Cache entries: ${data.cache_entries}<br>
+                            Cached symbols: ${data.cached_symbols.join(', ') || 'None'}
+                        </div>
+                    `;
+                } else {
+                    cacheDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i data-feather="alert-triangle" class="me-1"></i>
+                            ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                cacheDiv.innerHTML = `
                     <div class="alert alert-danger">
                         <i data-feather="x-circle" class="me-1"></i>
                         Error: ${error.message}
