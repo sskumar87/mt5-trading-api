@@ -54,7 +54,7 @@ def fetch_data():
 def get_supported_symbols():
     """Get list of supported symbols with their range sizes"""
     try:
-        result = range_service.instrument_map
+        result = range_service.symbol_map
         return jsonify({
             "success": True,
             "data": result,

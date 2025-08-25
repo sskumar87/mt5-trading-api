@@ -5,27 +5,6 @@ import tzlocal
 from typing import Optional
 
 
-def get_broker_offset(symbol: str = "EURUSD+") -> float:
-    """Fetch broker's UTC offset in hours using tick time."""
-    tick = mt5.symbol_info_tick(symbol)
-    if tick is None:
-        print(f"Failed to fetch tick for {symbol}")
-        return 0.0  # fallback to UTC
-
-    # Broker server time from tick (UTC aware)
-    server_time = datetime.fromtimestamp(tick.time, tz=timezone.utc)
-    utc_now = datetime.now(timezone.utc)
-
-    # Offset in hours (broker time - UTC time)
-    return (server_time - utc_now).total_seconds() / 60
-
-
-def get_local_offset() -> float:
-    """Fetch system's local UTC offset in hours."""
-    local_tz = tzlocal.get_localzone()
-    local_time = datetime.now(local_tz)
-    return local_time.utcoffset().total_seconds() / 3600
-
 
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
@@ -57,7 +36,26 @@ def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
 
 
 
+def get_broker_offset(symbol: str = "EURUSD") -> float:
+    """Fetch broker's UTC offset in hours using tick time."""
+    tick = mt5.symbol_info_tick(symbol)
+    if tick is None:
+        print(f"Failed to fetch tick for {symbol}")
+        return 0.0  # fallback to UTC
 
+    # Broker server time from tick (UTC aware)
+    server_time = datetime.fromtimestamp(tick.time, tz=timezone.utc)
+    utc_now = datetime.now(timezone.utc)
+
+    # Offset in hours (broker time - UTC time)
+    return (server_time - utc_now).total_seconds() / 60
+
+
+def get_local_offset() -> float:
+    """Fetch system's local UTC offset in hours."""
+    local_tz = tzlocal.get_localzone()
+    local_time = datetime.now(local_tz)
+    return local_time.utcoffset().total_seconds() / 3600
 
 
 

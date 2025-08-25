@@ -18,7 +18,7 @@ class RangeService:
     def __init__(self):
         self.mt5_service = mt5_service
         self.cache = {}  # In-memory cache for calculated ranges
-        self.instrument_map = {
+        self.symbol_map = {
             "XAUUSD": ("XAUUSD+", 1.5),
             "BTCUSD": ("BTCUSD", 50),
             "ETHUSD": ("ETHUSD", 5),
@@ -243,21 +243,21 @@ class RangeService:
         symbol_upper = symbol.upper().strip()
 
         # Direct match first
-        if symbol_upper in self.instrument_map:
-            return self.instrument_map[symbol_upper][1]
+        if symbol_upper in self.symbol_map:
+            return self.symbol_map[symbol_upper][1]
 
         # Try without + suffix
         base_symbol = symbol_upper.rstrip('+')
-        if base_symbol in self.instrument_map:
-            return self.instrument_map[base_symbol][1]
+        if base_symbol in self.symbol_map:
+            return self.symbol_map[base_symbol][1]
 
         # Try with + suffix
         plus_symbol = base_symbol + '+'
-        if plus_symbol in self.instrument_map:
-            return self.instrument_map[plus_symbol][1]
+        if plus_symbol in self.symbol_map:
+            return self.symbol_map[plus_symbol][1]
 
         # Fallback pattern matching
-        for key, (mapped_symbol, range_size) in self.instrument_map.items():
+        for key, (mapped_symbol, range_size) in self.symbol_map.items():
             if key.rstrip('+') == base_symbol:
                 return range_size
 
