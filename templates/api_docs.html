@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MT5 Trading API - Documentation</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/dist/feather.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/dist/feather.min.js"></script>
+    <style>
+        .code-block {
+            background-color: var(--bs-dark);
+            border: 1px solid var(--bs-border-color);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            overflow-x: auto;
+        }
+        .method-badge {
+            font-family: monospace;
+            font-size: 0.875rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+        .endpoint-section {
+            border-left: 3px solid var(--bs-primary);
+            padding-left: 1rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i data-feather="trending-up" class="me-2"></i>
+                MT5 Trading API
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i data-feather="home" class="me-1"></i>
+                    Back to Home
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="text-center mb-5">
+                    <h1 class="display-5 fw-bold">
+                        <i data-feather="book" class="me-3"></i>
+                        API Documentation
+                    </h1>
+                    <p class="lead text-muted">
+                        Complete reference for the MT5 Trading API endpoints
+                    </p>
+                </div>
+
+                <!-- Overview -->
+                <section class="mb-5">
+                    <h2><i data-feather="info" class="me-2"></i>Overview</h2>
+                    <p>
+                        The MT5 Trading API provides RESTful endpoints for interacting with MetaTrader 5 terminal. 
+                        All endpoints return JSON responses with a consistent structure.
+                    </p>
+                    
+                    <h4>Base URL</h4>
+                    <div class="code-block">
+                        <code>http://localhost:5000</code>
+                    </div>
+                    
+                    <h4>Response Format</h4>
+                    <div class="code-block">
+                        <pre>{
+  "success": true|false,
+  "data": {...},
+  "error": "error message",
+  "message": "success message"
+}</pre>
+                    </div>
+                </section>
+
+                <!-- Account Management -->
+                <section class="mb-5">
+                    <h2><i data-feather="user" class="me-2"></i>Account Management</h2>
+                    
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-success method-badge">POST</span>
+                            /api/account/connect
+                        </h4>
+                        <p>Initialize connection to MetaTrader 5 terminal.</p>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "account_info": {
+    "login": 12345678,
+    "balance": 10000.0,
+    "equity": 10000.0,
+    "margin": 0.0,
+    "free_margin": 10000.0,
+    "leverage": 100,
+    "currency": "USD"
+  },
+  "message": "Successfully connected to MetaTrader 5"
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-primary method-badge">GET</span>
+                            /api/account/info
+                        </h4>
+                        <p>Get current account information.</p>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "data": {
+    "login": 12345678,
+    "balance": 10000.0,
+    "equity": 10000.0,
+    "margin": 0.0,
+    "free_margin": 10000.0,
+    "leverage": 100,
+    "currency": "USD",
+    "profit": 0.0,
+    "credit": 0.0
+  }
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-primary method-badge">GET</span>
+                            /api/account/status
+                        </h4>
+                        <p>Check MT5 connection status.</p>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "connected": true,
+  "account_info": {...}
+}</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Trading Operations -->
+                <section class="mb-5">
+                    <h2><i data-feather="bar-chart-2" class="me-2"></i>Trading Operations</h2>
+                    
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-success method-badge">POST</span>
+                            /api/trading/buy
+                        </h4>
+                        <p>Execute a buy order.</p>
+                        
+                        <h5>Request Body</h5>
+                        <div class="code-block">
+                            <pre>{
+  "symbol": "EURUSD",
+  "volume": 0.1,
+  "sl": 1.1000,      // Optional stop loss
+  "tp": 1.1200,      // Optional take profit
+  "comment": "Buy order via API"
+}</pre>
+                        </div>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "data": {
+    "order": 123456789,
+    "deal": 123456790,
+    "volume": 0.1,
+    "price": 1.1150,
+    "comment": "Buy order via API",
+    "retcode": 10009
+  }
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-success method-badge">POST</span>
+                            /api/trading/sell
+                        </h4>
+                        <p>Execute a sell order.</p>
+                        
+                        <h5>Request Body</h5>
+                        <div class="code-block">
+                            <pre>{
+  "symbol": "EURUSD",
+  "volume": 0.1,
+  "sl": 1.1200,      // Optional stop loss
+  "tp": 1.1000,      // Optional take profit
+  "comment": "Sell order via API"
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-primary method-badge">GET</span>
+                            /api/trading/positions
+                        </h4>
+                        <p>Get all open positions.</p>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "data": [
+    {
+      "ticket": 123456789,
+      "symbol": "EURUSD",
+      "type": "BUY",
+      "volume": 0.1,
+      "price_open": 1.1150,
+      "price_current": 1.1160,
+      "profit": 10.0,
+      "swap": 0.0,
+      "time": "2024-08-25T10:30:00",
+      "comment": "Buy order via API"
+    }
+  ],
+  "count": 1
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-danger method-badge">DELETE</span>
+                            /api/trading/positions/{ticket}
+                        </h4>
+                        <p>Close a specific position by ticket number.</p>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "data": {
+    "closed_ticket": 123456789,
+    "deal": 123456791,
+    "volume": 0.1,
+    "price": 1.1160,
+    "profit": 10.0
+  }
+}</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Market Data -->
+                <section class="mb-5">
+                    <h2><i data-feather="trending-up" class="me-2"></i>Market Data</h2>
+                    
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-primary method-badge">GET</span>
+                            /api/market/symbols
+                        </h4>
+                        <p>Get list of available symbols.</p>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "data": [
+    {
+      "name": "EURUSD",
+      "description": "Euro vs US Dollar",
+      "category": "Forex",
+      "currency_base": "EUR",
+      "currency_profit": "USD",
+      "visible": true,
+      "digits": 5,
+      "spread": 1
+    }
+  ],
+  "count": 1
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-primary method-badge">GET</span>
+                            /api/market/tick/{symbol}
+                        </h4>
+                        <p>Get current tick data for a symbol.</p>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "data": {
+    "symbol": "EURUSD",
+    "time": "2024-08-25T10:30:15",
+    "bid": 1.1149,
+    "ask": 1.1151,
+    "last": 1.1150,
+    "volume": 0,
+    "spread": 0.0002,
+    "flags": 6
+  }
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="endpoint-section">
+                        <h4>
+                            <span class="badge bg-primary method-badge">GET</span>
+                            /api/market/rates/{symbol}
+                        </h4>
+                        <p>Get historical rates data for a symbol.</p>
+                        
+                        <h5>Query Parameters</h5>
+                        <ul>
+                            <li><code>timeframe</code> - M1, M5, M15, M30, H1, H4, D1, W1, MN1 (default: H1)</li>
+                            <li><code>count</code> - Number of bars to retrieve (default: 100)</li>
+                            <li><code>start_time</code> - Start time in ISO format (optional)</li>
+                        </ul>
+                        
+                        <h5>Example</h5>
+                        <div class="code-block">
+                            <code>GET /api/market/rates/EURUSD?timeframe=H1&count=50</code>
+                        </div>
+                        
+                        <h5>Response</h5>
+                        <div class="code-block">
+                            <pre>{
+  "success": true,
+  "data": {
+    "symbol": "EURUSD",
+    "timeframe": "H1",
+    "count": 2,
+    "rates": [
+      {
+        "time": "2024-08-25T09:00:00",
+        "open": 1.1140,
+        "high": 1.1160,
+        "low": 1.1135,
+        "close": 1.1155,
+        "tick_volume": 1234,
+        "spread": 1,
+        "real_volume": 0
+      }
+    ]
+  }
+}</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Error Codes -->
+                <section class="mb-5">
+                    <h2><i data-feather="alert-triangle" class="me-2"></i>Error Codes</h2>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th>HTTP Code</th>
+                                    <th>Description</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>200</td>
+                                    <td>Success</td>
+                                    <td>Request completed successfully</td>
+                                </tr>
+                                <tr>
+                                    <td>400</td>
+                                    <td>Bad Request</td>
+                                    <td>Invalid parameters or missing required fields</td>
+                                </tr>
+                                <tr>
+                                    <td>404</td>
+                                    <td>Not Found</td>
+                                    <td>Endpoint or resource not found</td>
+                                </tr>
+                                <tr>
+                                    <td>500</td>
+                                    <td>Internal Server Error</td>
+                                    <td>Unexpected server error</td>
+                                </tr>
+                                <tr>
+                                    <td>502</td>
+                                    <td>Bad Gateway</td>
+                                    <td>Unable to connect to MetaTrader 5</td>
+                                </tr>
+                                <tr>
+                                    <td>503</td>
+                                    <td>Service Unavailable</td>
+                                    <td>MT5 service temporarily unavailable</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Configuration -->
+                <section class="mb-5">
+                    <h2><i data-feather="settings" class="me-2"></i>Configuration</h2>
+                    <p>The API can be configured using environment variables:</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Description</th>
+                                    <th>Default</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>MT5_LOGIN</code></td>
+                                    <td>MetaTrader 5 account login</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><code>MT5_PASSWORD</code></td>
+                                    <td>MetaTrader 5 account password</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><code>MT5_SERVER</code></td>
+                                    <td>MetaTrader 5 server</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><code>MT5_PATH</code></td>
+                                    <td>Path to MT5 terminal executable</td>
+                                    <td>C:\Program Files\MetaTrader 5\terminal64.exe</td>
+                                </tr>
+                                <tr>
+                                    <td><code>MAX_POSITION_SIZE</code></td>
+                                    <td>Maximum allowed position size</td>
+                                    <td>10.0</td>
+                                </tr>
+                                <tr>
+                                    <td><code>SESSION_SECRET</code></td>
+                                    <td>Flask session secret key</td>
+                                    <td>-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        feather.replace();
+    </script>
+</body>
+</html>
