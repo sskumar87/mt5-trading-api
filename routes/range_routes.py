@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 import logging
 from urllib.parse import unquote_plus
 from services.range_service import range_service
+from constants.instruments import InstrumentConstants
 from utils.response_helpers import validate_required_fields
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,14 @@ def fetch_data():
 def get_supported_symbols():
     """Get list of supported symbols with their range sizes"""
     try:
-        result = range_service.instrument_map
+        # Convert instruments to dict format for JSON response
+        result = {}
+        for key, instrument in InstrumentConstants.INSTRUMENT_MAP.items():
+            result[key] = {
+                "symbol": instrument.symbol,
+                "range": instrument.range
+            }
+        
         return jsonify({
             "success": True,
             "data": result,

@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
-from dataclasses import dataclass
 import logging
 from services.mt5_service import mt5_service
+from constants.instruments import InstrumentConstants
 try:
     import MetaTrader5 as mt5
 except ImportError:
@@ -12,28 +12,12 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-@dataclass(frozen=True)
-class Instrument:
-    symbol: str
-    range: float  # attribute name 'range' is fine here (doesn't affect builtin range())
-
-instrument_map: Dict[str, Instrument] = {
-    "XAUUSD": Instrument("XAUUSD+", 1.5),
-    "BTCUSD": Instrument("BTCUSD", 50),
-    "ETHUSD": Instrument("ETHUSD", 5),
-    "NAS100": Instrument("NAS100", 5),
-    "GBPUSD": Instrument("GBPUSD+", 0.00030),
-    "EURUSD": Instrument("EURUSD+", 0.00030),
-    "USDJPY": Instrument("USDJPY+", 0.003),
-}
-
 class RangeService:
     """Service for detecting and caching trading ranges"""
     
     def __init__(self):
         self.mt5_service = mt5_service
         self.cache = {}  # In-memory cache for calculated ranges
-        self.instrument_map = instrument_map
     
     def get_cache_key(self, symbol: str, timeframe: int, bars: int) -> str:
         """Generate cache key for storing range data"""
@@ -225,28 +209,7 @@ class RangeService:
     
     def get_symbol_range_size(self, symbol: str) -> float:
         """Get the appropriate range size for a symbol"""
-        symbol_upper = symbol.upper().strip()
-        
-        # Direct match first
-        if symbol_upper in self.instrument_map:
-            return self.instrument_map[symbol_upper].range
-        
-        # Try without + suffix
-        base_symbol = symbol_upper.rstrip('+')
-        if base_symbol in self.instrument_map:
-            return self.instrument_map[base_symbol].range
-        
-        # Try with + suffix
-        plus_symbol = base_symbol + '+'
-        if plus_symbol in self.instrument_map:
-            return self.instrument_map[plus_symbol].range
-        
-        # Fallback pattern matching
-        for key, instrument in self.instrument_map.items():
-            if key.rstrip('+') == base_symbol:
-                return instrument.range
-        
-        return 1.0  # Default range size
+        return InstrumentConstants.get_range_size(symbol)
     
     def fetch_and_calculate_ranges(self, symbol: str, timeframe: int = 5, 
                                   bars: int = 5520, lookback: int = 4,
