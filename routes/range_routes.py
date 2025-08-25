@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 import logging
+from urllib.parse import unquote_plus
 from services.range_service import range_service
 from utils.response_helpers import validate_required_fields
 
@@ -11,8 +12,9 @@ range_bp = Blueprint('range', __name__)
 def fetch_data():
     """Fetch market data and calculate ranges with caching"""
     try:
-        # Get query parameters
-        symbol = request.args.get('symbol', 'EURUSD').upper()
+        # Get query parameters - handle URL encoding properly
+        raw_symbol = request.args.get('symbol', 'EURUSD')
+        symbol = unquote_plus(raw_symbol).strip().upper()  # Handle + and spaces
         tf = int(request.args.get('tf', 5))  # timeframe in minutes
         candles = int(request.args.get('candles', 5520))  # number of bars
         lookback = int(request.args.get('lookback', 4))  # lookback period
@@ -118,7 +120,7 @@ def clear_cache():
 def get_symbol_ranges(symbol):
     """Get cached ranges for a specific symbol"""
     try:
-        symbol = symbol.upper()
+        symbol = unquote_plus(symbol).strip().upper()  # Handle URL encoding
         tf = int(request.args.get('tf', 5))
         candles = int(request.args.get('candles', 5520))
         
