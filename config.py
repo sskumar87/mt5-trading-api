@@ -24,3 +24,7 @@ class Config:
     # Security
     REQUIRE_API_KEY = os.environ.get('REQUIRE_API_KEY', 'False').lower() == 'true'
     API_KEY = os.environ.get('API_KEY')
+    # TWILIO
+    TWILIO_SID = os.environ.get('TWILIO_SID')
+    TWILIO_TOKEN = os.environ.get('TWILIO_TOKEN')
+    TWILIO_FROM = os.environ.get('TWILIO_FROM')

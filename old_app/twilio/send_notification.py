@@ -2,9 +2,13 @@
 
 from twilio.rest import Client
 
-TWILIO_SID=''
-TWILIO_TOKEN=''
-TWILIO_FROM='+17623091192'
+from config import Config
+
+config = Config()
+
+TWILIO_SID = config.TWILIO_SID
+TWILIO_TOKEN = config.TWILIO_TOKEN
+TWILIO_FROM = config.TWILIO_FROM
 
 
 client = Client(TWILIO_SID, TWILIO_TOKEN)
