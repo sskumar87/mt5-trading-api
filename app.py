@@ -1,8 +1,12 @@
 import os
 import logging
+import atexit
+from datetime import datetime
 from flask import Flask, render_template
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 # Import route blueprints
 from routes.account_routes import account_bp
@@ -12,6 +16,9 @@ from routes.range_routes import range_bp
 
 # Import error handlers
 from utils.error_handlers import register_error_handlers
+
+# Import range service for scheduled tasks
+from services.range_service import range_service
 
 # Configure logging
 logging.basicConfig(
@@ -46,6 +53,9 @@ def create_app():
     # Register error handlers
     register_error_handlers(app)
     
+    # Initialize and start the scheduler
+    start_scheduler()
+    
     # Main routes
     @app.route('/')
     def index():
@@ -67,6 +77,56 @@ def create_app():
         }
     
     return app
+
+def start_scheduler():
+    """Start the background scheduler for fetching symbol data"""
+    scheduler = BackgroundScheduler()
+    
+    def fetch_all_data_job():
+        """Background job to fetch data for all symbols"""
+        try:
+            logger = logging.getLogger(__name__)
+            logger.info("Starting scheduled fetch for all symbols...")
+            
+            # Fetch data for all symbols (5-minute timeframe, 1500 bars)
+            result = range_service.fetch_all_symbols_data(timeframe=5, bars=1500)
+            
+            logger.info(f"Scheduled fetch completed. Retrieved data for {len(result)} symbols")
+            
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in scheduled fetch job: {str(e)}")
+    
+    # Schedule the job to run every 5 minutes at 30 seconds past the minute
+    # This creates a pattern like: 00:05:30, 00:10:30, 00:15:30, etc.
+    trigger = CronTrigger(
+        minute='5,10,15,20,25,30,35,40,45,50,55',
+        second=30
+    )
+    
+    scheduler.add_job(
+        func=fetch_all_data_job,
+        trigger=trigger,
+        id='fetch_symbols_job',
+        name='Fetch All Symbols Data',
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    
+    # Ensure scheduler shuts down gracefully
+    atexit.register(lambda: scheduler.shutdown())
+    
+    logger = logging.getLogger(__name__)
+    logger.info("Background scheduler started - will fetch symbol data every 5 minutes at :30 seconds")
+    
+    # Run initial fetch on startup
+    try:
+        logger.info("Running initial symbol data fetch on startup...")
+        result = range_service.fetch_all_symbols_data(timeframe=5, bars=1500)
+        logger.info(f"Initial fetch completed. Retrieved data for {len(result)} symbols")
+    except Exception as e:
+        logger.error(f"Error in initial fetch: {str(e)}")
 
 # Create app instance
 app = create_app()
