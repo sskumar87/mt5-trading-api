@@ -29,7 +29,8 @@ class RangeService:
         self.mt5_service = mt5_service
         self.cache = {}  # In-memory cache for calculated ranges
         self.symbol_data = {}  # Local storage for all symbol data
-        self.calculated_ranges = {}  # Local storage for calculated ranges
+        self.calculated_ranges = {}  # Local storage for raw body ranges
+        self.merged_ranges = {}  # Local storage for merged ranges
     
     def get_cache_key(self, symbol: str, timeframe: int, bars: int) -> str:
         """Generate cache key for storing range data"""
@@ -469,6 +470,32 @@ class RangeService:
                     
                     if body_ranges.empty:
                         logger.info(f"No ranges found for {symbol_key}")
+                        
+                        # Store empty results in calculated_ranges
+                        self.calculated_ranges[symbol_key] = {
+                            "symbol": symbol_key,
+                            "lookback": lookback,
+                            "range_size": range_size,
+                            "body_ranges_count": 0,
+                            "body_ranges": [],
+                            "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
+                            "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None,
+                            "calculation_timestamp": datetime.now().isoformat()
+                        }
+                        
+                        # Store empty results in merged_ranges
+                        self.merged_ranges[symbol_key] = {
+                            "symbol": symbol_key,
+                            "lookback": lookback,
+                            "range_size": range_size,
+                            "merged_ranges_count": 0,
+                            "merged_ranges": [],
+                            "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
+                            "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None,
+                            "merge_timestamp": datetime.now().isoformat()
+                        }
+                        
+                        # Store combined empty results for backward compatibility
                         all_ranges[symbol_key] = {
                             "symbol": symbol_key,
                             "lookback": lookback,
@@ -485,7 +512,31 @@ class RangeService:
                     # Merge consecutive ranges using old_app merge_ranges function
                     merged_ranges = self.merge_ranges_oldapp(body_ranges)
                     
-                    # Store results
+                    # Store raw body ranges in calculated_ranges
+                    self.calculated_ranges[symbol_key] = {
+                        "symbol": symbol_key,
+                        "lookback": lookback,
+                        "range_size": range_size,
+                        "body_ranges_count": len(body_ranges),
+                        "body_ranges": body_ranges.to_dict('records'),
+                        "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
+                        "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None,
+                        "calculation_timestamp": datetime.now().isoformat()
+                    }
+                    
+                    # Store merged ranges in merged_ranges
+                    self.merged_ranges[symbol_key] = {
+                        "symbol": symbol_key,
+                        "lookback": lookback,
+                        "range_size": range_size,
+                        "merged_ranges_count": len(merged_ranges),
+                        "merged_ranges": merged_ranges.to_dict('records'),
+                        "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
+                        "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None,
+                        "merge_timestamp": datetime.now().isoformat()
+                    }
+                    
+                    # Store combined results for backward compatibility
                     all_ranges[symbol_key] = {
                         "symbol": symbol_key,
                         "lookback": lookback,
@@ -536,10 +587,16 @@ class RangeService:
             logger.info("Cleared all stored symbol data")
     
     def get_calculated_ranges(self, symbol_key: Optional[str] = None) -> Dict:
-        """Get calculated ranges for a specific symbol or all symbols"""
+        """Get raw body ranges for a specific symbol or all symbols"""
         if symbol_key:
             return self.calculated_ranges.get(symbol_key, {})
         return self.calculated_ranges
+    
+    def get_merged_ranges(self, symbol_key: Optional[str] = None) -> Dict:
+        """Get merged ranges for a specific symbol or all symbols"""
+        if symbol_key:
+            return self.merged_ranges.get(symbol_key, {})
+        return self.merged_ranges
     
     def clear_calculated_ranges(self, symbol_key: Optional[str] = None):
         """Clear calculated ranges for specific symbol or all symbols"""
@@ -550,6 +607,16 @@ class RangeService:
         else:
             self.calculated_ranges.clear()
             logger.info("Cleared all calculated ranges")
+    
+    def clear_merged_ranges(self, symbol_key: Optional[str] = None):
+        """Clear merged ranges for specific symbol or all symbols"""
+        if symbol_key:
+            if symbol_key in self.merged_ranges:
+                del self.merged_ranges[symbol_key]
+                logger.info(f"Cleared merged ranges for {symbol_key}")
+        else:
+            self.merged_ranges.clear()
+            logger.info("Cleared all merged ranges")
 
 # Global instance
 range_service = RangeService()

@@ -179,6 +179,53 @@ def get_calculated_ranges():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@range_bp.route('/merged', methods=['GET'])
+def get_merged_ranges():
+    """Get merged ranges calculated by the scheduler for all symbols"""
+    try:
+        symbol = request.args.get('symbol')
+        
+        if symbol:
+            # Get merged ranges for specific symbol
+            symbol = unquote_plus(symbol).strip().upper()
+            merged_data = range_service.get_merged_ranges(symbol)
+            
+            if not merged_data:
+                return jsonify({
+                    "success": False,
+                    "error": f"No merged ranges found for {symbol}"
+                }), 404
+            
+            return jsonify({
+                "success": True,
+                "symbol": symbol,
+                "data": merged_data,
+                "description": "Merged ranges processed using old_app merge_ranges function"
+            }), 200
+        else:
+            # Get all merged ranges
+            all_merged = range_service.get_merged_ranges()
+            stored_symbols = range_service.get_all_stored_symbols()
+            
+            symbols_with_ranges = [
+                symbol for symbol, data in all_merged.items() 
+                if data.get('merged_ranges_count', 0) > 0
+            ]
+            
+            return jsonify({
+                "success": True,
+                "symbols_with_data": stored_symbols,
+                "symbols_with_ranges": symbols_with_ranges,
+                "total_symbols": len(all_merged),
+                "data": all_merged,
+                "description": "Merged ranges processed using old_app merge_ranges function"
+            }), 200
+
+    except Exception as e:
+        logger.error(f"Error in get merged ranges endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @range_bp.route('/ranges/<string:symbol>', methods=['GET'])
 def get_symbol_ranges(symbol):
     """Get cached ranges for a specific symbol"""
