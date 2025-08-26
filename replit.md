@@ -6,13 +6,17 @@ The system serves as middleware between web clients and the MT5 platform, handli
 
 # Recent Changes
 
-## 2025-08-26: Scheduled Range Calculation Integration
+## 2025-08-26: Complete Range Calculation Pipeline with Local Storage
 - **Scheduler Enhancement**: Modified scheduled fetch process to calculate ranges after fetching data for all symbols
-- **Range Storage**: Added local variable storage for calculated ranges in the RangeService class
-- **API Endpoint**: Added `/api/ranges/calculated` endpoint to view ranges calculated by the scheduler
-- **Automated Processing**: Every 5 minutes, the system now fetches 5-minute candle data and calculates ranges using the old_app ranges function
-- **Merge Ranges Integration**: Implemented original merge_ranges function from old_app to merge overlapping ranges for each instrument
-- **Local Storage**: Calculated ranges are stored in `range_service.calculated_ranges` for easy access via API
+- **Raw Data Storage**: All MT5 price data stored in `range_service.symbol_data` local variable on startup and every 5 minutes
+- **Raw Calculation Storage**: Complete range calculations stored in `range_service.calculated_ranges` including:
+  - **body_ranges**: Raw range calculations from old_app ranges function stored as dictionary records
+  - **merged_ranges**: Results from old_app merge_ranges function stored as dictionary records
+  - **metadata**: Symbol info, range counts, timestamps, and calculation parameters
+- **API Endpoint**: Added `/api/ranges/calculated` endpoint to view all stored calculation results
+- **Automated Processing**: Every 5 minutes, the system fetches 5-minute candle data and runs complete old_app pipeline
+- **Original Function Integration**: Uses exact old_app ranges and merge_ranges functions for authentic calculations
+- **Dual Storage Pattern**: Raw data and calculations stored locally on both application startup and scheduled execution
 
 ## 2025-08-25: Range Detection & Code Organization
 - **Resolved merge conflicts**: Fixed git conflicts in routes and service files for clean codebase
