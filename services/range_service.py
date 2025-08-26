@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time, timezone
 import logging
 from services.mt5_service import mt5_service
 from constants.instruments import InstrumentConstants
@@ -9,6 +9,16 @@ try:
     import MetaTrader5 as mt5
 except ImportError:
     import services.mock_mt5 as mt5
+
+# Timezone setup (copied from old_app logic)
+try:
+    from zoneinfo import ZoneInfo  # Python 3.9+
+    LOCAL_TZ = ZoneInfo("Australia/Sydney")
+    BROKER_TZ = ZoneInfo("Etc/GMT-3")  # Broker UTC+3 -> reverse sign for Etc/GMT zones
+except Exception:
+    import pytz
+    LOCAL_TZ = pytz.timezone("Australia/Sydney")
+    BROKER_TZ = pytz.FixedOffset(180)  # UTC+3 offset in minutes
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +28,14 @@ class RangeService:
     def __init__(self):
         self.mt5_service = mt5_service
         self.cache = {}  # In-memory cache for calculated ranges
+        self.symbol_data = {}  # Local storage for all symbol data
     
     def get_cache_key(self, symbol: str, timeframe: int, bars: int) -> str:
         """Generate cache key for storing range data"""
         return f"{symbol}_{timeframe}_{bars}"
     
     def mt5_fetch_rates(self, symbol: str, timeframe: int, bars: int = 1500) -> Optional[pd.DataFrame]:
-        """Fetch OHLCV bars from MT5 with proper formatting"""
+        """Fetch OHLCV bars from MT5 with timezone conversion (based on old_app logic)"""
         try:
             if not self.mt5_service.check_connection():
                 reconnect_result = self.mt5_service.initialize_connection()
@@ -44,39 +55,54 @@ class RangeService:
             
             mt5_timeframe = timeframe_map.get(timeframe, mt5.TIMEFRAME_M5)
             
-            # Clean and validate symbol
-            symbol = symbol.strip()
-            logger.info(f"Attempting to fetch rates for symbol: '{symbol}'")
+            logger.info(f"Fetching rates for symbol with updated function: {symbol}")
             
-            # Ensure symbol exists
-            symbol_info = mt5.symbol_info(symbol)
-            if symbol_info is None:
-                logger.error(f"Symbol '{symbol}' not found")
+            # Ensure symbol exists in Market Watch
+            if not mt5.symbol_select(symbol, True):
+                logger.error(f"Failed to select symbol: {symbol}")
                 return None
-                
-            if not symbol_info.visible:
-                if not mt5.symbol_select(symbol, True):
-                    logger.error(f"Failed to select symbol {symbol}")
-                    return None
             
-            # Fetch rates
+            # Fetch OHLC data from MT5
             rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, bars)
             if rates is None:
-                logger.error(f"No rates returned for {symbol}")
+                logger.error(f"No rates returned for {symbol}. Error: {mt5.last_error()}")
                 return None
             
             df = pd.DataFrame(rates)
             if df.empty:
+                logger.error("Empty rates DataFrame.")
                 return None
             
-            # Convert timestamp and add symbol
+            # --- Convert broker timestamps (UTC+3) → Australia/Sydney (DST-aware) ---
             df["time"] = pd.to_datetime(df["time"], unit="s")
+            df["time"] = df["time"].dt.tz_localize(BROKER_TZ)  # Localize MT5 broker time
+            df["time"] = df["time"].dt.tz_convert(LOCAL_TZ)    # Convert to Australia/Sydney
+            
+            # --- Check if crypto symbol → skip trading window filter ---
+            crypto_symbols = ["BTCUSD", "ETHUSD"]
+            if symbol.upper() not in crypto_symbols:
+                # Trading window: 08:00 → 06:55 (next day)
+                start_t = time(8, 0)
+                end_t = time(6, 55)
+                tod = df["time"].dt.time
+                base_mask = (tod >= start_t) | (tod <= end_t)
+                
+                # Restrict to Monday 08:00 → Saturday 06:55
+                wd = df["time"].dt.weekday  # Monday=0 ... Sunday=6
+                mask = base_mask.copy()
+                mask &= (wd <= 5)                                # Drop Sundays entirely
+                mask &= ~((wd == 0) & (tod < start_t))           # Drop early Monday before 08:00
+                mask &= ~((wd == 5) & (tod > end_t))             # Drop late Saturday after 06:55
+                
+                df = df[mask].copy()
+            
+            # Add symbol column
             df["symbol"] = symbol
             
-            # Format time for display
+            # Format time column → day-month-year hour:minute
             df["time_formatted"] = df["time"].dt.strftime('%d-%m-%Y %H:%M')
             
-            logger.info(f"Fetched {len(df)} bars for {symbol}")
+            logger.info(f"Fetched {len(df)} bars for {symbol} using old_app logic")
             return df
             
         except Exception as e:
@@ -318,6 +344,51 @@ class RangeService:
                 symbols.append(symbol)
         return symbols
     
+    def fetch_all_symbols_data(self, timeframe: int = 5, bars: int = 1500) -> Dict[str, pd.DataFrame]:
+        """Fetch data for all symbols from constants and store in local variable"""
+        try:
+            all_symbols = InstrumentConstants.get_all_symbols()
+            logger.info(f"Fetching data for {len(all_symbols)} symbols: {all_symbols}")
+            
+            # Clear existing symbol data
+            self.symbol_data = {}
+            
+            for symbol_key in all_symbols:
+                try:
+                    # Get the actual symbol name from the instrument
+                    instrument = InstrumentConstants.get_instrument(symbol_key)
+                    if instrument:
+                        actual_symbol = instrument.symbol
+                        logger.info(f"Fetching data for {symbol_key} -> {actual_symbol}")
+                        
+                        # Fetch data using the old_app function
+                        df = self.mt5_fetch_rates(actual_symbol, timeframe, bars)
+                        
+                        if df is not None and not df.empty:
+                            self.symbol_data[symbol_key] = df
+                            logger.info(f"Successfully stored data for {symbol_key}: {len(df)} rows")
+                        else:
+                            logger.warning(f"No data returned for {symbol_key} ({actual_symbol})")
+                            
+                except Exception as e:
+                    logger.error(f"Error fetching data for {symbol_key}: {str(e)}")
+                    continue
+            
+            logger.info(f"Successfully fetched and stored data for {len(self.symbol_data)} symbols")
+            return self.symbol_data
+            
+        except Exception as e:
+            logger.error(f"Error fetching all symbols data: {str(e)}")
+            return {}
+    
+    def get_symbol_data(self, symbol_key: str) -> Optional[pd.DataFrame]:
+        """Get stored data for a specific symbol"""
+        return self.symbol_data.get(symbol_key)
+    
+    def get_all_stored_symbols(self) -> List[str]:
+        """Get list of all symbols with stored data"""
+        return list(self.symbol_data.keys())
+    
     def clear_cache(self, symbol: Optional[str] = None):
         """Clear cache for specific symbol or all symbols"""
         if symbol:
@@ -328,6 +399,21 @@ class RangeService:
         else:
             self.cache.clear()
             logger.info("Cleared all cache")
+    
+    def clear_symbol_data(self, symbol_key: Optional[str] = None):
+        """Clear stored symbol data for specific symbol or all symbols"""
+        if symbol_key:
+            if symbol_key in self.symbol_data:
+                del self.symbol_data[symbol_key]
+                logger.info(f"Cleared stored data for {symbol_key}")
+        else:
+            self.symbol_data.clear()
+            logger.info("Cleared all stored symbol data")
 
 # Global instance
 range_service = RangeService()
+
+# Function to initialize all symbol data on startup
+def initialize_all_symbols_data(timeframe: int = 5, bars: int = 1500) -> Dict[str, pd.DataFrame]:
+    """Initialize data for all symbols from constants"""
+    return range_service.fetch_all_symbols_data(timeframe, bars)
