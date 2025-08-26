@@ -29,9 +29,8 @@ class Config:
     TWILIO_TOKEN = os.environ.get('TWILIO_TOKEN')
     TWILIO_FROM = os.environ.get('TWILIO_FROM')
     
-    # Scheduler configuration
-    SCHEDULER_START_HOUR = int(os.environ.get('SCHEDULER_START_HOUR', '1'))  # Starting hour (e.g., 1 for 1:XX:XX)
-    SCHEDULER_MINUTE_INTERVAL = int(os.environ.get('SCHEDULER_MINUTE_INTERVAL', '5'))  # Interval in minutes
-    SCHEDULER_SECONDS = int(os.environ.get('SCHEDULER_SECONDS', '30'))  # Seconds past the minute
+    # Scheduler configuration - runs every hour
+    SCHEDULER_MINUTE = int(os.environ.get('SCHEDULER_MINUTE', '5'))  # Minute of the hour to run (0-59)
+    SCHEDULER_SECONDS = int(os.environ.get('SCHEDULER_SECONDS', '30'))  # Seconds past the minute to run (0-59)
     SCHEDULER_TIMEFRAME = int(os.environ.get('SCHEDULER_TIMEFRAME', '5'))  # Data timeframe in minutes
     SCHEDULER_BARS = int(os.environ.get('SCHEDULER_BARS', '1500'))  # Number of bars to fetch

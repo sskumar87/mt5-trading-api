@@ -102,21 +102,15 @@ def start_scheduler():
             logger = logging.getLogger(__name__)
             logger.error(f"Error in scheduled fetch job: {str(e)}")
     
-    # Generate minute pattern based on configuration
-    # For example: start_hour=1, interval=5 creates pattern starting from hour 1
-    start_hour = Config.SCHEDULER_START_HOUR
-    interval = Config.SCHEDULER_MINUTE_INTERVAL
+    # Get configurable minutes and seconds from configuration
+    # This will run every hour at the specified minutes and seconds
+    minutes = Config.SCHEDULER_MINUTE
     seconds = Config.SCHEDULER_SECONDS
     
-    # Generate minutes list: 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55 (excluding 0)
-    minutes = [str(i) for i in range(interval, 60, interval)]
-    minute_pattern = ','.join(minutes)
-    
-    # Create the trigger with configurable parameters
+    # Create the trigger to run every hour at specified minutes:seconds
     trigger = CronTrigger(
-        hour=start_hour,  # Specific hour (e.g., 1 for 1:XX:XX)
-        minute=minute_pattern,  # Minutes based on interval
-        second=seconds
+        minute=minutes,  # Minutes past the hour (e.g., 5 for XX:05:XX)
+        second=seconds   # Seconds past the minute (e.g., 30 for XX:XX:30)
     )
     
     scheduler.add_job(
@@ -133,8 +127,8 @@ def start_scheduler():
     atexit.register(lambda: scheduler.shutdown())
     
     logger = logging.getLogger(__name__)
-    logger.info(f"Background scheduler started - will fetch symbol data at hour {start_hour} every {interval} minutes at :{seconds} seconds")
-    logger.info(f"Schedule pattern: {start_hour}:{minute_pattern.replace(',', f':{seconds}, {start_hour}:')}:{seconds}")
+    logger.info(f"Background scheduler started - will fetch symbol data every hour at :{minutes:02d}:{seconds:02d}")
+    logger.info(f"Schedule pattern: Every hour at XX:{minutes:02d}:{seconds:02d}")
     
     # Run initial fetch on startup
     try:
