@@ -85,7 +85,7 @@ def start_scheduler():
     scheduler = BackgroundScheduler()
     
     def fetch_all_data_job():
-        """Background job to fetch data for all symbols"""
+        """Background job to fetch data for all symbols and calculate ranges"""
         try:
             logger = logging.getLogger(__name__)
             logger.info("Starting scheduled fetch for all symbols...")
@@ -97,6 +97,14 @@ def start_scheduler():
             )
             
             logger.info(f"Scheduled fetch completed. Retrieved data for {len(result)} symbols")
+            
+            # Calculate ranges for all symbols that have data
+            if result:
+                logger.info("Calculating ranges for all symbols...")
+                ranges_result = range_service.calculate_ranges_for_all_symbols(lookback=4)
+                logger.info(f"Range calculation completed. Calculated ranges for {len(ranges_result)} symbols")
+            else:
+                logger.warning("No data available for range calculation")
             
         except Exception as e:
             logger = logging.getLogger(__name__)
@@ -141,6 +149,14 @@ def start_scheduler():
             bars=Config.SCHEDULER_BARS
         )
         logger.info(f"Initial fetch completed. Retrieved data for {len(result)} symbols")
+        
+        # Calculate ranges for initial data
+        if result:
+            logger.info("Calculating ranges for initial data...")
+            ranges_result = range_service.calculate_ranges_for_all_symbols(lookback=4)
+            logger.info(f"Initial range calculation completed. Calculated ranges for {len(ranges_result)} symbols")
+        else:
+            logger.warning("No initial data available for range calculation")
     except Exception as e:
         logger.error(f"Error in initial fetch: {str(e)}")
 

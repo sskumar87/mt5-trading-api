@@ -139,6 +139,46 @@ def clear_cache():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@range_bp.route('/calculated', methods=['GET'])
+def get_calculated_ranges():
+    """Get all calculated ranges from the scheduled fetch process"""
+    try:
+        symbol = request.args.get('symbol')
+        
+        if symbol:
+            # Get ranges for specific symbol
+            symbol = unquote_plus(symbol).strip().upper()
+            ranges_data = range_service.get_calculated_ranges(symbol)
+            
+            if not ranges_data:
+                return jsonify({
+                    "success": False,
+                    "error": f"No calculated ranges found for {symbol}"
+                }), 404
+            
+            return jsonify({
+                "success": True,
+                "symbol": symbol,
+                "data": ranges_data
+            }), 200
+        else:
+            # Get all calculated ranges
+            all_ranges = range_service.get_calculated_ranges()
+            stored_symbols = range_service.get_all_stored_symbols()
+            
+            return jsonify({
+                "success": True,
+                "symbols_with_data": stored_symbols,
+                "symbols_with_ranges": list(all_ranges.keys()),
+                "total_symbols": len(all_ranges),
+                "data": all_ranges
+            }), 200
+
+    except Exception as e:
+        logger.error(f"Error in get calculated ranges endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @range_bp.route('/ranges/<string:symbol>', methods=['GET'])
 def get_symbol_ranges(symbol):
     """Get cached ranges for a specific symbol"""

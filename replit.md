@@ -6,6 +6,13 @@ The system serves as middleware between web clients and the MT5 platform, handli
 
 # Recent Changes
 
+## 2025-08-26: Scheduled Range Calculation Integration
+- **Scheduler Enhancement**: Modified scheduled fetch process to calculate ranges after fetching data for all symbols
+- **Range Storage**: Added local variable storage for calculated ranges in the RangeService class
+- **API Endpoint**: Added `/api/ranges/calculated` endpoint to view ranges calculated by the scheduler
+- **Automated Processing**: Every 5 minutes, the system now fetches 5-minute candle data and calculates ranges using the old_app ranges function
+- **Local Storage**: Calculated ranges are stored in `range_service.calculated_ranges` for easy access via API
+
 ## 2025-08-25: Range Detection & Code Organization
 - **Resolved merge conflicts**: Fixed git conflicts in routes and service files for clean codebase
 - **Range Detection API**: Implemented advanced range detection functionality from user notebooks with in-memory caching
