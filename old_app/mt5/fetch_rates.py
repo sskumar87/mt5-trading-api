@@ -5,18 +5,6 @@ import tzlocal
 from typing import Optional
 
 
-
-try:
-    from zoneinfo import ZoneInfo  # Python 3.9+
-    LOCAL_TZ = ZoneInfo("Australia/Sydney")
-    BROKER_TZ = ZoneInfo("Etc/GMT-3")  # Broker UTC+3 -> reverse sign for Etc/GMT zones
-except Exception:
-    import pytz
-    LOCAL_TZ = pytz.timezone("Australia/Sydney")
-    BROKER_TZ = pytz.FixedOffset(get_broker_offset())  # UTC+3 offset in minutes
-
-
-
 def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     """Calculate the Relative Strength Index (RSI)."""
     delta = series.diff()
@@ -32,10 +20,6 @@ def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     return rsi
 
 
-
-
-
-
 def get_broker_offset(symbol: str = "EURUSD") -> float:
     """Fetch broker's UTC offset in hours using tick time."""
     tick = mt5.symbol_info_tick(symbol)
@@ -43,12 +27,23 @@ def get_broker_offset(symbol: str = "EURUSD") -> float:
         print(f"Failed to fetch tick for {symbol}")
         return 0.0  # fallback to UTC
 
+
     # Broker server time from tick (UTC aware)
     server_time = datetime.fromtimestamp(tick.time, tz=timezone.utc)
     utc_now = datetime.now(timezone.utc)
 
     # Offset in hours (broker time - UTC time)
     return (server_time - utc_now).total_seconds() / 60
+
+
+try:
+    from zoneinfo import ZoneInfo  # Python 3.9+
+    LOCAL_TZ = ZoneInfo("Australia/Sydney")
+    BROKER_TZ = ZoneInfo("Etc/GMT-3")  # Broker UTC+3 -> reverse sign for Etc/GMT zones
+except Exception:
+    import pytz
+    LOCAL_TZ = pytz.timezone("Australia/Sydney")
+    BROKER_TZ = pytz.FixedOffset(get_broker_offset())  # UTC+3 offset in minutes
 
 
 def get_local_offset() -> float:
@@ -117,11 +112,6 @@ def mt5_fetch_rates(symbol: str,
     df.set_index("time", inplace=True)
 
     return df
-
-
-
-
-
 
 
 def mt5_fetch_rates_range(symbol: str,
