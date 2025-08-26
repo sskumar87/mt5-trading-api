@@ -80,6 +80,8 @@ def create_app():
 
 def start_scheduler():
     """Start the background scheduler for fetching symbol data"""
+    from config import Config
+    
     scheduler = BackgroundScheduler()
     
     def fetch_all_data_job():
@@ -88,8 +90,11 @@ def start_scheduler():
             logger = logging.getLogger(__name__)
             logger.info("Starting scheduled fetch for all symbols...")
             
-            # Fetch data for all symbols (5-minute timeframe, 1500 bars)
-            result = range_service.fetch_all_symbols_data(timeframe=5, bars=1500)
+            # Use configurable timeframe and bars
+            result = range_service.fetch_all_symbols_data(
+                timeframe=Config.SCHEDULER_TIMEFRAME,
+                bars=Config.SCHEDULER_BARS
+            )
             
             logger.info(f"Scheduled fetch completed. Retrieved data for {len(result)} symbols")
             
@@ -97,11 +102,21 @@ def start_scheduler():
             logger = logging.getLogger(__name__)
             logger.error(f"Error in scheduled fetch job: {str(e)}")
     
-    # Schedule the job to run every 5 minutes at 30 seconds past the minute
-    # This creates a pattern like: 00:05:30, 00:10:30, 00:15:30, etc.
+    # Generate minute pattern based on configuration
+    # For example: start_hour=1, interval=5 creates pattern starting from hour 1
+    start_hour = Config.SCHEDULER_START_HOUR
+    interval = Config.SCHEDULER_MINUTE_INTERVAL
+    seconds = Config.SCHEDULER_SECONDS
+    
+    # Generate minutes list: 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55 (excluding 0)
+    minutes = [str(i) for i in range(interval, 60, interval)]
+    minute_pattern = ','.join(minutes)
+    
+    # Create the trigger with configurable parameters
     trigger = CronTrigger(
-        minute='5,10,15,20,25,30,35,40,45,50,55',
-        second=30
+        hour=start_hour,  # Specific hour (e.g., 1 for 1:XX:XX)
+        minute=minute_pattern,  # Minutes based on interval
+        second=seconds
     )
     
     scheduler.add_job(
@@ -118,12 +133,16 @@ def start_scheduler():
     atexit.register(lambda: scheduler.shutdown())
     
     logger = logging.getLogger(__name__)
-    logger.info("Background scheduler started - will fetch symbol data every 5 minutes at :30 seconds")
+    logger.info(f"Background scheduler started - will fetch symbol data at hour {start_hour} every {interval} minutes at :{seconds} seconds")
+    logger.info(f"Schedule pattern: {start_hour}:{minute_pattern.replace(',', f':{seconds}, {start_hour}:')}:{seconds}")
     
     # Run initial fetch on startup
     try:
         logger.info("Running initial symbol data fetch on startup...")
-        result = range_service.fetch_all_symbols_data(timeframe=5, bars=1500)
+        result = range_service.fetch_all_symbols_data(
+            timeframe=Config.SCHEDULER_TIMEFRAME,
+            bars=Config.SCHEDULER_BARS
+        )
         logger.info(f"Initial fetch completed. Retrieved data for {len(result)} symbols")
     except Exception as e:
         logger.error(f"Error in initial fetch: {str(e)}")
