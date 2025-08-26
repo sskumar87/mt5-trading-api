@@ -148,30 +148,43 @@ def get_calculated_ranges():
         if symbol:
             # Get ranges for specific symbol
             symbol = unquote_plus(symbol).strip().upper()
-            ranges_data = range_service.get_calculated_ranges(symbol)
+            ranges_df = range_service.get_calculated_ranges(symbol)
             
-            if not ranges_data:
+            if ranges_df.empty:
                 return jsonify({
                     "success": False,
                     "error": f"No calculated ranges found for {symbol}"
                 }), 404
             
+            # Convert DataFrame to dict for JSON response
             return jsonify({
                 "success": True,
                 "symbol": symbol,
-                "data": ranges_data
+                "data": ranges_df.to_dict('records'),
+                "count": len(ranges_df),
+                "description": "Raw body ranges calculated using old_app ranges function"
             }), 200
         else:
             # Get all calculated ranges
             all_ranges = range_service.get_calculated_ranges()
             stored_symbols = range_service.get_all_stored_symbols()
             
+            # Convert all DataFrames to dict for JSON response
+            serialized_data = {}
+            for symbol, df in all_ranges.items():
+                if not df.empty:
+                    serialized_data[symbol] = {
+                        "data": df.to_dict('records'),
+                        "count": len(df)
+                    }
+            
             return jsonify({
                 "success": True,
                 "symbols_with_data": stored_symbols,
-                "symbols_with_ranges": list(all_ranges.keys()),
-                "total_symbols": len(all_ranges),
-                "data": all_ranges
+                "symbols_with_ranges": list(serialized_data.keys()),
+                "total_symbols": len(serialized_data),
+                "data": serialized_data,
+                "description": "Raw body ranges calculated using old_app ranges function"
             }), 200
 
     except Exception as e:
@@ -188,18 +201,20 @@ def get_merged_ranges():
         if symbol:
             # Get merged ranges for specific symbol
             symbol = unquote_plus(symbol).strip().upper()
-            merged_data = range_service.get_merged_ranges(symbol)
+            merged_df = range_service.get_merged_ranges(symbol)
             
-            if not merged_data:
+            if merged_df.empty:
                 return jsonify({
                     "success": False,
                     "error": f"No merged ranges found for {symbol}"
                 }), 404
             
+            # Convert DataFrame to dict for JSON response
             return jsonify({
                 "success": True,
                 "symbol": symbol,
-                "data": merged_data,
+                "data": merged_df.to_dict('records'),
+                "count": len(merged_df),
                 "description": "Merged ranges processed using old_app merge_ranges function"
             }), 200
         else:
@@ -207,17 +222,23 @@ def get_merged_ranges():
             all_merged = range_service.get_merged_ranges()
             stored_symbols = range_service.get_all_stored_symbols()
             
-            symbols_with_ranges = [
-                symbol for symbol, data in all_merged.items() 
-                if data.get('merged_ranges_count', 0) > 0
-            ]
+            # Convert all DataFrames to dict for JSON response
+            serialized_data = {}
+            for symbol, df in all_merged.items():
+                if not df.empty:
+                    serialized_data[symbol] = {
+                        "data": df.to_dict('records'),
+                        "count": len(df)
+                    }
+            
+            symbols_with_ranges = list(serialized_data.keys())
             
             return jsonify({
                 "success": True,
                 "symbols_with_data": stored_symbols,
                 "symbols_with_ranges": symbols_with_ranges,
-                "total_symbols": len(all_merged),
-                "data": all_merged,
+                "total_symbols": len(serialized_data),
+                "data": serialized_data,
                 "description": "Merged ranges processed using old_app merge_ranges function"
             }), 200
 

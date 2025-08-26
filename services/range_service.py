@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Union
 from datetime import datetime, timedelta, time, timezone
 import logging
 from services.mt5_service import mt5_service
 from constants.instruments import InstrumentConstants
+# Will import old_app functions dynamically to avoid MT5 import issues
 try:
     import MetaTrader5 as mt5
 except ImportError:
@@ -28,9 +29,9 @@ class RangeService:
     def __init__(self):
         self.mt5_service = mt5_service
         self.cache = {}  # In-memory cache for calculated ranges
-        self.symbol_data = {}  # Local storage for all symbol data
-        self.calculated_ranges = {}  # Local storage for raw body ranges
-        self.merged_ranges = {}  # Local storage for merged ranges
+        self.rates_data = {}  # Local storage for all symbol data as DataFrames
+        self.calculated_ranges = {}  # Local storage for raw body ranges as DataFrames
+        self.merged_ranges = {}  # Local storage for merged ranges as DataFrames
     
     def get_cache_key(self, symbol: str, timeframe: int, bars: int) -> str:
         """Generate cache key for storing range data"""
@@ -406,49 +407,81 @@ class RangeService:
         return symbols
     
     def fetch_all_symbols_data(self, timeframe: int = 5, bars: int = 1500) -> Dict[str, pd.DataFrame]:
-        """Fetch data for all symbols from constants and store in local variable"""
+        """Sequential workflow: For each symbol -> mt5_fetch_rates -> ranges -> merge_ranges"""
         try:
             all_symbols = InstrumentConstants.get_all_symbols()
-            logger.info(f"Fetching data for {len(all_symbols)} symbols: {all_symbols}")
+            logger.info(f"Sequential processing for {len(all_symbols)} symbols: {all_symbols}")
             
-            # Clear existing symbol data
-            self.symbol_data = {}
+            # Clear existing data in separate storage variables
+            self.rates_data = {}
+            self.calculated_ranges = {}
+            self.merged_ranges = {}
             
             for symbol_key in all_symbols:
                 try:
-                    # Get the actual symbol name from the instrument
+                    # Get the actual MT5 symbol name
                     instrument = InstrumentConstants.get_instrument(symbol_key)
-                    if instrument:
-                        actual_symbol = instrument.symbol
-                        logger.info(f"Fetching data for {symbol_key} -> {actual_symbol}")
+                    if not instrument:
+                        continue
                         
-                        # Fetch data using the old_app function
-                        df = self.mt5_fetch_rates(actual_symbol, timeframe, bars)
+                    mt5_symbol = instrument.symbol
+                    logger.info(f"Sequential processing: {symbol_key} -> {mt5_symbol}")
+                    
+                    # Step 1: Fetch rates using built-in mt5_fetch_rates method
+                    rates_df = self.mt5_fetch_rates(mt5_symbol, timeframe, bars)
+                    
+                    if rates_df is not None and not rates_df.empty:
+                        # Store rates data as DataFrame
+                        self.rates_data[symbol_key] = rates_df
+                        logger.info(f"Step 1 - Fetched {len(rates_df)} rates for {symbol_key}")
                         
-                        if df is not None and not df.empty:
-                            self.symbol_data[symbol_key] = df
-                            logger.info(f"Successfully stored data for {symbol_key}: {len(df)} rows")
-                        else:
-                            logger.warning(f"No data returned for {symbol_key} ({actual_symbol})")
+                        # Step 2: Calculate body ranges using old_app logic and store as DataFrame
+                        try:
+                            # Get appropriate range size for symbol
+                            range_size = self.get_symbol_range_size(symbol_key)
+                            body_ranges_df = self.find_body_ranges(rates_df, 4, range_size)
                             
+                            if not body_ranges_df.empty:
+                                self.calculated_ranges[symbol_key] = body_ranges_df
+                                logger.info(f"Step 2 - Calculated {len(body_ranges_df)} ranges for {symbol_key}")
+                                
+                                # Step 3: Merge ranges using old_app logic and store as DataFrame
+                                merged_ranges_df = self.merge_overlapping_ranges(body_ranges_df)
+                                if not merged_ranges_df.empty:
+                                    self.merged_ranges[symbol_key] = merged_ranges_df
+                                    logger.info(f"Step 3 - Merged to {len(merged_ranges_df)} ranges for {symbol_key}")
+                                else:
+                                    logger.warning(f"No merged ranges for {symbol_key}")
+                                    self.merged_ranges[symbol_key] = pd.DataFrame()
+                            else:
+                                logger.warning(f"No calculated ranges for {symbol_key}")
+                                self.calculated_ranges[symbol_key] = pd.DataFrame()
+                                self.merged_ranges[symbol_key] = pd.DataFrame()
+                        except Exception as e:
+                            logger.error(f"Error calculating ranges for {symbol_key}: {e}")
+                            self.calculated_ranges[symbol_key] = pd.DataFrame()
+                            self.merged_ranges[symbol_key] = pd.DataFrame()
+                    else:
+                        logger.warning(f"No rates data for {symbol_key} ({mt5_symbol})")
+                        
                 except Exception as e:
-                    logger.error(f"Error fetching data for {symbol_key}: {str(e)}")
+                    logger.error(f"Error processing {symbol_key}: {str(e)}")
                     continue
             
-            logger.info(f"Successfully fetched and stored data for {len(self.symbol_data)} symbols")
-            return self.symbol_data
+            logger.info(f"Sequential processing completed - Rates: {len(self.rates_data)}, Ranges: {len(self.calculated_ranges)}, Merged: {len(self.merged_ranges)}")
+            return self.rates_data
             
         except Exception as e:
-            logger.error(f"Error fetching all symbols data: {str(e)}")
+            logger.error(f"Error in sequential fetch: {str(e)}")
             return {}
     
     def get_symbol_data(self, symbol_key: str) -> Optional[pd.DataFrame]:
-        """Get stored data for a specific symbol"""
-        return self.symbol_data.get(symbol_key)
+        """Get stored rates data for a specific symbol"""
+        return self.rates_data.get(symbol_key)
     
     def get_all_stored_symbols(self) -> List[str]:
-        """Get list of all symbols with stored data"""
-        return list(self.symbol_data.keys())
+        """Get list of all symbols with stored rates data"""
+        return list(self.rates_data.keys())
     
     def calculate_ranges_for_all_symbols(self, lookback: int = 4) -> Dict[str, Dict]:
         """Calculate ranges for all symbols that have stored data"""
@@ -586,16 +619,16 @@ class RangeService:
             self.symbol_data.clear()
             logger.info("Cleared all stored symbol data")
     
-    def get_calculated_ranges(self, symbol_key: Optional[str] = None) -> Dict:
-        """Get raw body ranges for a specific symbol or all symbols"""
+    def get_calculated_ranges(self, symbol_key: Optional[str] = None) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
+        """Get calculated ranges DataFrame for a specific symbol or all symbols"""
         if symbol_key:
-            return self.calculated_ranges.get(symbol_key, {})
+            return self.calculated_ranges.get(symbol_key, pd.DataFrame())
         return self.calculated_ranges
     
-    def get_merged_ranges(self, symbol_key: Optional[str] = None) -> Dict:
-        """Get merged ranges for a specific symbol or all symbols"""
+    def get_merged_ranges(self, symbol_key: Optional[str] = None) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
+        """Get merged ranges DataFrame for a specific symbol or all symbols"""
         if symbol_key:
-            return self.merged_ranges.get(symbol_key, {})
+            return self.merged_ranges.get(symbol_key, pd.DataFrame())
         return self.merged_ranges
     
     def clear_calculated_ranges(self, symbol_key: Optional[str] = None):
