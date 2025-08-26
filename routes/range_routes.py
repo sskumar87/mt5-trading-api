@@ -12,42 +12,55 @@ range_bp = Blueprint('range', __name__)
 
 @range_bp.route('/fetch_data', methods=['GET'])
 def fetch_data():
-    """Fetch market data and calculate ranges with caching"""
+    """Get data from sequential processing or trigger new fetch"""
     try:
-        # Get query parameters - handle URL encoding properly
-        raw_symbol = request.args.get('symbol', 'EURUSD')
-        symbol = unquote_plus(
-            raw_symbol).strip().upper()  # Handle + and spaces
-        tf = int(request.args.get('tf', 5))  # timeframe in minutes
-        candles = int(request.args.get('candles', 5520))  # number of bars
-        lookback = int(request.args.get('lookback', 4))  # lookback period
-        force_refresh = request.args.get('force_refresh',
-                                         'false').lower() == 'true'
-
-        # Validate parameters
-        if tf not in [1, 5, 15, 30, 60, 240, 1440]:
-            return jsonify({
-                "success":
-                False,
-                "error":
-                "Invalid timeframe. Use: 1, 5, 15, 30, 60, 240, 1440"
-            }), 400
-
-        if candles < 1 or candles > 10000:
-            return jsonify({
-                "success": False,
-                "error": "Candles must be between 1 and 10000"
-            }), 400
-
-        # Calculate ranges
-        result = range_service.fetch_and_calculate_ranges(
-            symbol=symbol,
-            timeframe=tf,
-            bars=candles,
-            lookback=lookback,
-            force_refresh=force_refresh)
-
-        return jsonify(result), 200 if result["success"] else 400
+        # Get all symbols data from sequential processing
+        stored_symbols = range_service.get_all_stored_symbols()
+        
+        # If no data stored, trigger sequential fetch
+        if not stored_symbols:
+            logger.info("No stored data found, triggering sequential fetch...")
+            range_service.fetch_all_symbols_data()
+            stored_symbols = range_service.get_all_stored_symbols()
+        
+        # Get data from sequential storage
+        data = []
+        for symbol_key in stored_symbols:
+            rates_df = range_service.get_symbol_data(symbol_key)
+            calculated_df = range_service.get_calculated_ranges(symbol_key)
+            merged_df = range_service.get_merged_ranges(symbol_key)
+            
+            # Build result in expected format
+            symbol_data = {
+                "symbol": symbol_key,
+                "rates_count": len(rates_df) if not rates_df.empty else 0,
+                "calculated_ranges_count": len(calculated_df) if not calculated_df.empty else 0,
+                "merged_ranges_count": len(merged_df) if not merged_df.empty else 0,
+                "has_data": not rates_df.empty
+            }
+            
+            # Add actual data if requested
+            if not rates_df.empty:
+                symbol_data["rates_sample"] = rates_df.head(3).to_dict('records')
+            if not calculated_df.empty:
+                symbol_data["calculated_ranges"] = calculated_df.to_dict('records')
+            if not merged_df.empty:
+                symbol_data["merged_ranges"] = merged_df.to_dict('records')
+                
+            data.append(symbol_data)
+        
+        return jsonify({
+            "success": True,
+            "data": data,
+            "data_length": len(data),
+            "description": "Data from sequential processing: rates -> calculated_ranges -> merged_ranges",
+            "storage_info": {
+                "rates_data_symbols": len(range_service.rates_data),
+                "calculated_ranges_symbols": len(range_service.calculated_ranges),
+                "merged_ranges_symbols": len(range_service.merged_ranges),
+                "sequential_workflow": "For each symbol: Step1(mt5_fetch_rates) -> Step2(ranges) -> Step3(merge_ranges)"
+            }
+        }), 200
 
     except ValueError as e:
         return jsonify({
