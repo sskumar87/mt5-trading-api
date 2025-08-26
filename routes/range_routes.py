@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 import logging
+import pandas as pd
 from urllib.parse import unquote_plus
 from services.range_service import range_service
 from constants.instruments import InstrumentConstants
@@ -12,34 +13,38 @@ range_bp = Blueprint('range', __name__)
 
 @range_bp.route('/fetch_data', methods=['GET'])
 def fetch_data():
-    """Get data from sequential processing or trigger new fetch"""
+    """Get data directly from initialized range service storage"""
     try:
-        # Get all symbols data from sequential processing
-        stored_symbols = range_service.get_all_stored_symbols()
-        
-        # If no data stored, trigger sequential fetch
-        if not stored_symbols:
-            logger.info("No stored data found, triggering sequential fetch...")
-            range_service.fetch_all_symbols_data()
-            stored_symbols = range_service.get_all_stored_symbols()
-        
-        # Get data from sequential storage
+        # Access data directly from the initialized service storage
         data = []
-        for symbol_key in stored_symbols:
-            rates_df = range_service.get_symbol_data(symbol_key)
-            calculated_df = range_service.get_calculated_ranges(symbol_key)
-            merged_df = range_service.get_merged_ranges(symbol_key)
+        
+        # Get all symbols from the rates_data storage (primary storage)
+        all_symbols = list(range_service.rates_data.keys())
+        
+        # If no symbols in rates_data, check if we have any calculated or merged data
+        if not all_symbols:
+            calculated_symbols = list(range_service.calculated_ranges.keys())
+            merged_symbols = list(range_service.merged_ranges.keys())
+            all_symbols = list(set(calculated_symbols + merged_symbols))
+        
+        # Build response for each symbol with available data
+        for symbol_key in all_symbols:
+            rates_df = range_service.rates_data.get(symbol_key, pd.DataFrame())
+            calculated_df = range_service.calculated_ranges.get(symbol_key, pd.DataFrame())
+            merged_df = range_service.merged_ranges.get(symbol_key, pd.DataFrame())
             
-            # Build result in expected format
+            # Build result showing data availability
             symbol_data = {
                 "symbol": symbol_key,
                 "rates_count": len(rates_df) if not rates_df.empty else 0,
                 "calculated_ranges_count": len(calculated_df) if not calculated_df.empty else 0,
                 "merged_ranges_count": len(merged_df) if not merged_df.empty else 0,
-                "has_data": not rates_df.empty
+                "has_rates_data": not rates_df.empty,
+                "has_calculated_ranges": not calculated_df.empty,
+                "has_merged_ranges": not merged_df.empty
             }
             
-            # Add actual data if requested
+            # Add sample data if available
             if not rates_df.empty:
                 symbol_data["rates_sample"] = rates_df.head(3).to_dict('records')
             if not calculated_df.empty:
@@ -53,12 +58,12 @@ def fetch_data():
             "success": True,
             "data": data,
             "data_length": len(data),
-            "description": "Data from sequential processing: rates -> calculated_ranges -> merged_ranges",
+            "description": "Direct access to initialized range service storage",
             "storage_info": {
                 "rates_data_symbols": len(range_service.rates_data),
                 "calculated_ranges_symbols": len(range_service.calculated_ranges),
                 "merged_ranges_symbols": len(range_service.merged_ranges),
-                "sequential_workflow": "For each symbol: Step1(mt5_fetch_rates) -> Step2(ranges) -> Step3(merge_ranges)"
+                "sequential_workflow_status": "Service initialized and ready for data access"
             }
         }), 200
 
