@@ -1,8 +1,17 @@
 # Overview
 
-This is a Flask-based REST API that provides a web interface to MetaTrader 5 (MT5) trading platform. The application enables programmatic trading operations, market data retrieval, and account management through HTTP endpoints. It's designed as a production-ready API that bridges web applications with the MT5 desktop trading terminal.
+This is a Flask-based REST API that provides a web interface to MetaTrader 5 (MT5) trading platform. The application enables programmatic trading operations, market data retrieval, account management, and advanced range detection functionality through HTTP endpoints. It's designed as a production-ready API that bridges web applications with the MT5 desktop trading terminal.
 
-The system serves as middleware between web clients and the MT5 platform, handling authentication, order management, market data queries, and account information retrieval. It includes comprehensive error handling, request validation, and logging capabilities.
+The system serves as middleware between web clients and the MT5 platform, handling authentication, order management, market data queries, account information retrieval, and intelligent range detection with caching. It includes comprehensive error handling, request validation, and logging capabilities.
+
+# Recent Changes
+
+## 2025-08-25: Range Detection & Code Organization
+- **Resolved merge conflicts**: Fixed git conflicts in routes and service files for clean codebase
+- **Range Detection API**: Implemented advanced range detection functionality from user notebooks with in-memory caching
+- **Constants Refactoring**: Extracted instrument mapping into clean dataclass-based `InstrumentConstants` class for better type safety
+- **URL Encoding Fix**: Fixed symbol handling for instruments with + suffix (EURUSD+, XAUUSD+) using proper URL decoding
+- **Performance Optimization**: Added in-memory caching system to avoid recalculation delays on repeated requests
 
 # User Preferences
 
@@ -12,11 +21,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Application Structure
 - **Flask Application Factory Pattern**: Uses the factory pattern in `app.py` with blueprint-based route organization for modularity and scalability
-- **Service Layer Architecture**: Business logic separated into dedicated service classes (`mt5_service`, `trading_service`, `market_data_service`) that handle MT5 platform interactions
-- **Blueprint-based Routing**: Routes organized by functionality into separate blueprints (account, trading, market data) for better code organization
+- **Service Layer Architecture**: Business logic separated into dedicated service classes (`mt5_service`, `trading_service`, `market_data_service`, `range_service`) that handle MT5 platform interactions
+- **Blueprint-based Routing**: Routes organized by functionality into separate blueprints (account, trading, market data, ranges) for better code organization
+- **Constants Organization**: Instrument mappings and configuration organized in dedicated constants classes with dataclass structure
 
 ## API Design
-- **RESTful Endpoints**: Three main API categories under `/api/account`, `/api/trading`, and `/api/market` prefixes
+- **RESTful Endpoints**: Four main API categories under `/api/account`, `/api/trading`, `/api/market`, and `/api/ranges` prefixes
+- **Range Detection API**: Advanced endpoints for fetching range data, symbol mapping, and cache management
 - **Standardized JSON Responses**: Consistent response format with `success` boolean and appropriate data/error fields
 - **Request Validation**: Input validation using utility functions for required fields and trading parameter validation
 - **CORS Enabled**: Cross-origin requests allowed for frontend integration
