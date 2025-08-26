@@ -176,6 +176,65 @@ class RangeService:
             logger.error(f"Error finding body ranges: {str(e)}")
             return pd.DataFrame()
     
+    def merge_ranges_oldapp(self, range_df: pd.DataFrame) -> pd.DataFrame:
+        """Merge ranges using the original old_app merge_ranges function"""
+        try:
+            if range_df.empty:
+                return range_df
+            
+            # Convert time columns to the format expected by old_app function
+            range_df_copy = range_df.copy()
+            
+            # Ensure time columns are in the correct format for merge_ranges function
+            if 'time' in range_df_copy.columns and 'end_time' in range_df_copy.columns:
+                range_df_copy['time'] = pd.to_datetime(range_df_copy['time'], format='%d-%m-%Y %H:%M')
+                range_df_copy['end_time'] = pd.to_datetime(range_df_copy['end_time'], format='%d-%m-%Y %H:%M')
+                
+                merged = []
+                group_rows = [range_df_copy.iloc[0]]
+
+                for idx in range(1, len(range_df_copy)):
+                    row = range_df_copy.iloc[idx]
+                    last = group_rows[-1]
+                    if last['time'] <= row['time'] <= last['end_time']:
+                        group_rows.append(row)
+                    else:
+                        group_df = pd.DataFrame(group_rows)
+                        merged_row = group_rows[0].copy()
+                        merged_row['end_time'] = group_df['end_time'].max()
+                        merged_row['top'] = group_df['top'].max()
+                        merged_row['bottom'] = group_df['bottom'].min()
+                        merged_row['duration_bars'] = group_df['duration_bars'].sum()
+                        merged_row['range_value'] = round(merged_row['top'] - merged_row['bottom'], 2)
+                        merged_row['mid'] = round((merged_row['top'] + merged_row['bottom']) / 2, 2)
+                        merged.append(merged_row)
+                        group_rows = [row]
+                
+                # Handle last group
+                group_df = pd.DataFrame(group_rows)
+                merged_row = group_rows[0].copy()
+                merged_row['end_time'] = group_df['end_time'].max()
+                merged_row['top'] = group_df['top'].max()
+                merged_row['bottom'] = group_df['bottom'].min()
+                merged_row['duration_bars'] = group_df['duration_bars'].sum()
+                merged_row['range_value'] = round(merged_row['top'] - merged_row['bottom'], 2)
+                merged_row['mid'] = round((merged_row['top'] + merged_row['bottom']) / 2, 2)
+                merged.append(merged_row)
+
+                result = pd.DataFrame(merged)
+                result['time'] = result['time'].dt.strftime('%d-%m-%Y %H:%M')
+                result['end_time'] = result['end_time'].dt.strftime('%d-%m-%Y %H:%M')
+                result = result.iloc[::-1]  # Reverse order as in original function
+                
+                return result
+            else:
+                logger.warning("Missing time columns for merge_ranges function")
+                return range_df_copy
+            
+        except Exception as e:
+            logger.error(f"Error merging ranges with old_app function: {str(e)}")
+            return range_df
+
     def merge_ranges(self, range_df: pd.DataFrame) -> pd.DataFrame:
         """Merge consecutive overlapping ranges"""
         try:
@@ -300,8 +359,8 @@ class RangeService:
                     "cached": False
                 }
             
-            # Merge consecutive ranges
-            merged_ranges = self.merge_ranges(body_ranges)
+            # Merge consecutive ranges using old_app merge_ranges function
+            merged_ranges = self.merge_ranges_oldapp(body_ranges)
             
             # Prepare result
             result_data = {
@@ -423,8 +482,8 @@ class RangeService:
                         }
                         continue
                     
-                    # Merge consecutive ranges
-                    merged_ranges = self.merge_ranges(body_ranges)
+                    # Merge consecutive ranges using old_app merge_ranges function
+                    merged_ranges = self.merge_ranges_oldapp(body_ranges)
                     
                     # Store results
                     all_ranges[symbol_key] = {
