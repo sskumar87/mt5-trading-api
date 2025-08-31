@@ -30,15 +30,30 @@ Calculate margin requirements for position sizes in the Risk Management & Lot Ca
     "action": "BUY",
     "price": 1.08,
     "contract_size": 100000,
-    "margin_usd": 1080.0,
+    "margin": 1080.0,
     "margin_currency": "USD",
     "base_currency": "EUR",
     "quote_currency": "USD",
-    "calculation": "(1.0 * 100000 * 1.08) / 100 = 1080.00",
-    "note": "Estimated calculation - prices may vary in live trading"
+    "calculation_method": "MT5 order_calc_margin",
+    "calculation": "MT5 calculated margin: 1080.00 USD",
+    "note": "Live MT5 calculation with current prices"
   }
 }
 ```
+
+### Calculation Methods
+The API uses two calculation methods:
+
+1. **MT5 order_calc_margin** (Preferred): When MT5 connection is available
+   - Uses `mt5.order_calc_margin()` for accurate broker-specific calculations
+   - Includes account currency detection with `mt5.account_info().currency`
+   - Automatically enables symbols if not visible
+   - Returns exact margin as calculated by your broker
+
+2. **Fallback estimation** (Demo mode): When MT5 connection unavailable
+   - Uses standard contract sizes and estimated prices
+   - Provides consistent calculations for testing
+   - Includes "note" field indicating estimation mode
 
 ### Supported Instruments
 
@@ -81,11 +96,13 @@ const calculateMargin = async (symbol, volume, leverage = 100, action = 'BUY') =
     
     if (result.success) {
       return {
-        marginRequired: result.data.margin_usd,
+        marginRequired: result.data.margin,
         calculation: result.data.calculation,
+        calculationMethod: result.data.calculation_method,
         contractSize: result.data.contract_size,
         price: result.data.price,
-        currency: result.data.margin_currency
+        currency: result.data.margin_currency,
+        isLiveCalculation: result.data.calculation_method === 'MT5 order_calc_margin'
       };
     } else {
       throw new Error(result.error);
