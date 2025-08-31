@@ -295,6 +295,116 @@ class TradingService:
             logger.error(f"Error cancelling order: {str(e)}")
             return {"success": False, "error": str(e)}
     
+    def calculate_margin(self, symbol: str, volume: float, leverage: int = 100, action: str = "BUY") -> Dict[str, Any]:
+        """Calculate margin requirement for a given position size"""
+        try:
+            # Check connection first
+            if not self.mt5_service.check_connection():
+                # For demo/testing purposes, use fallback calculation
+                return self._calculate_margin_fallback(symbol, volume, leverage, action)
+            
+            # Get symbol information
+            symbol_info = mt5.symbol_info(symbol)
+            if symbol_info is None:
+                return {"success": False, "error": f"Symbol {symbol} not found"}
+            
+            # Get current price
+            tick = mt5.symbol_info_tick(symbol)
+            if tick is None:
+                return {"success": False, "error": f"Failed to get price for {symbol}"}
+            
+            # Use the appropriate price based on action
+            price = tick.ask if action.upper() == "BUY" else tick.bid
+            
+            # Calculate contract size and margin
+            contract_size = symbol_info.trade_contract_size
+            
+            # Margin calculation: (Volume * Contract Size * Price) / Leverage
+            margin_usd = (volume * contract_size * price) / leverage
+            
+            # Get account currency and convert if needed
+            account_info = mt5.account_info()
+            account_currency = account_info.currency if account_info else "USD"
+            
+            # For currency pairs, determine base and quote currency
+            if len(symbol) >= 6:
+                base_currency = symbol[:3]
+                quote_currency = symbol[3:6]
+            else:
+                base_currency = "USD"
+                quote_currency = "USD"
+            
+            return {
+                "success": True,
+                "data": {
+                    "symbol": symbol,
+                    "volume": volume,
+                    "leverage": leverage,
+                    "action": action,
+                    "price": price,
+                    "contract_size": contract_size,
+                    "margin_usd": round(margin_usd, 2),
+                    "margin_currency": account_currency,
+                    "base_currency": base_currency,
+                    "quote_currency": quote_currency,
+                    "calculation": f"({volume} * {contract_size} * {price}) / {leverage} = {margin_usd:.2f}"
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating margin: {str(e)}")
+            # Fallback to estimation
+            return self._calculate_margin_fallback(symbol, volume, leverage, action)
+    
+    def _calculate_margin_fallback(self, symbol: str, volume: float, leverage: int, action: str) -> Dict[str, Any]:
+        """Fallback margin calculation when MT5 is not available"""
+        try:
+            # Standard contract sizes for common instruments
+            contract_sizes = {
+                'EURUSD': 100000, 'GBPUSD': 100000, 'USDJPY': 100000, 'USDCHF': 100000,
+                'AUDUSD': 100000, 'USDCAD': 100000, 'NZDUSD': 100000, 'EURGBP': 100000,
+                'XAUUSD': 100, 'XAGUSD': 5000,  # Gold and Silver
+                'BTCUSD': 1, 'ETHUSD': 1,  # Crypto
+                'NAS100': 1, 'SPX500': 1, 'GER40': 1  # Indices
+            }
+            
+            # Estimated prices for common instruments (fallback only)
+            estimated_prices = {
+                'EURUSD': 1.08, 'GBPUSD': 1.27, 'USDJPY': 149.50, 'USDCHF': 0.88,
+                'AUDUSD': 0.66, 'USDCAD': 1.36, 'NZDUSD': 0.60, 'EURGBP': 0.85,
+                'XAUUSD': 2050, 'XAGUSD': 24,
+                'BTCUSD': 43000, 'ETHUSD': 2300,
+                'NAS100': 15500, 'SPX500': 4400, 'GER40': 15800
+            }
+            
+            contract_size = contract_sizes.get(symbol, 100000)
+            estimated_price = estimated_prices.get(symbol, 1.0)
+            
+            # Basic margin calculation
+            margin_usd = (volume * contract_size * estimated_price) / leverage
+            
+            return {
+                "success": True,
+                "data": {
+                    "symbol": symbol,
+                    "volume": volume,
+                    "leverage": leverage,
+                    "action": action,
+                    "price": estimated_price,
+                    "contract_size": contract_size,
+                    "margin_usd": round(margin_usd, 2),
+                    "margin_currency": "USD",
+                    "base_currency": symbol[:3] if len(symbol) >= 6 else "USD",
+                    "quote_currency": symbol[3:6] if len(symbol) >= 6 else "USD",
+                    "calculation": f"({volume} * {contract_size} * {estimated_price}) / {leverage} = {margin_usd:.2f}",
+                    "note": "Estimated calculation - prices may vary in live trading"
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in fallback margin calculation: {str(e)}")
+            return {"success": False, "error": f"Failed to calculate margin: {str(e)}"}
+    
     def _get_order_type_string(self, order_type: int) -> str:
         """Convert MT5 order type to string"""
         order_types = {

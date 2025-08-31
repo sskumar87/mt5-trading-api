@@ -1,9 +1,5 @@
 import logging
-
-from decorator import EMPTY
 from flask import Blueprint, jsonify, request
-
-from services.order import map_fill, map_time, place_order
 from services.trading_service import trading_service
 from utils.response_helpers import validate_required_fields
 
@@ -16,9 +12,7 @@ def send_order():
     """Send a trading order"""
     try:
         req = request.get_json()
-        type_filling = map_fill(req['type_filling'])
-        type_time = map_time(req['type_time'])
-        result = place_order(
+        result = trading_service.place_order(
             symbol=req.get('symbol'),
             side=req.get('side'),
             volume=req.get('volume'),
@@ -33,8 +27,8 @@ def send_order():
             magic=req.get('magic'),
             comment=req.get('comment'),
             do_order_check=req.get('do_order_check'),
-            type_filling=type_filling,
-            type_time=type_time,
+            type_filling=req.get('type_filling'),
+            type_time=req.get('type_time'),
             expiration=req.get('expiration'),
         )
 
@@ -164,4 +158,45 @@ def sell_order():
         return jsonify({"success": False, "error": f"Invalid numeric value: {str(e)}"}), 400
     except Exception as e:
         logger.error(f"Error in sell order endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@trading_bp.route('/calculate-margin', methods=['POST'])
+def calculate_margin():
+    """Calculate margin requirement for a given position size - for Alertwatch React app"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['symbol', 'volume']
+        validation_result = validate_required_fields(data, required_fields)
+        if not validation_result["valid"]:
+            return jsonify({"success": False, "error": validation_result["error"]}), 400
+        
+        symbol = data.get('symbol').upper()
+        volume = float(data.get('volume'))
+        leverage = data.get('leverage', 100)  # Default leverage 1:100
+        action = data.get('action', 'BUY').upper()  # BUY or SELL
+        
+        # Validate inputs
+        if volume <= 0:
+            return jsonify({"success": False, "error": "Volume must be greater than 0"}), 400
+        
+        if leverage <= 0:
+            return jsonify({"success": False, "error": "Leverage must be greater than 0"}), 400
+        
+        # Calculate margin using trading service
+        result = trading_service.calculate_margin(
+            symbol=symbol,
+            volume=volume,
+            leverage=leverage,
+            action=action
+        )
+        
+        return jsonify(result), 200 if result["success"] else 400
+        
+    except ValueError as e:
+        return jsonify({"success": False, "error": f"Invalid numeric value: {str(e)}"}), 400
+    except Exception as e:
+        logger.error(f"Error in calculate margin endpoint: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500

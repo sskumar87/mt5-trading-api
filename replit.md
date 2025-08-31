@@ -6,6 +6,13 @@ The system serves as middleware between web clients and the MT5 platform, handli
 
 # Recent Changes
 
+## 2025-08-31: Margin Calculation API for Alertwatch React App
+- **New Endpoint**: Added `/api/trading/calculate-margin` endpoint for position margin calculations
+- **Risk Management Integration**: Designed specifically for Alertwatch React app's Risk Management & Lot Calculator component
+- **Comprehensive Calculation**: Supports all major instruments (forex, commodities, crypto, indices) with accurate margin calculations
+- **Fallback System**: Includes robust fallback calculations when MT5 connection is unavailable
+- **Detailed Response**: Returns margin amount, calculation breakdown, contract sizes, and currency information
+
 ## 2025-08-26: Separate Storage Variables for Raw Calculations
 - **Scheduler Enhancement**: Modified scheduled fetch process to calculate ranges after fetching data for all symbols
 - **Raw Data Storage**: All MT5 price data stored in `range_service.symbol_data` local variable on startup and every 5 minutes
@@ -42,6 +49,8 @@ Preferred communication style: Simple, everyday language.
 ## API Design
 - **RESTful Endpoints**: Four main API categories under `/api/account`, `/api/trading`, `/api/market`, and `/api/ranges` prefixes
 - **Range Detection API**: Advanced endpoints for fetching range data, symbol mapping, and cache management
+- **Trading Operations**: Complete trading API including margin calculations for risk management
+- **Margin Calculation API**: Dedicated endpoint for position size margin calculations supporting all major instruments
 - **Standardized JSON Responses**: Consistent response format with `success` boolean and appropriate data/error fields
 - **Request Validation**: Input validation using utility functions for required fields and trading parameter validation
 - **CORS Enabled**: Cross-origin requests allowed for frontend integration
