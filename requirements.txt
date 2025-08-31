@@ -11,3 +11,4 @@ tzlocal
 fastapi
 urllib3
 APScheduler
+requests

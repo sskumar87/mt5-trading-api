@@ -1,0 +1,462 @@
+{
+	"info": {
+		"_postman_id": "mt5-api-collection-2025",
+		"name": "MT5 Flask API Collection",
+		"description": "Complete API collection for MetaTrader 5 Flask backend with trading operations, market data, account management, and range detection functionality.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Account Management",
+			"item": [
+				{
+					"name": "Get Account Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/account/info",
+							"host": ["{{base_url}}"],
+							"path": ["api", "account", "info"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Account Balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/account/balance",
+							"host": ["{{base_url}}"],
+							"path": ["api", "account", "balance"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Terminal Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/account/terminal",
+							"host": ["{{base_url}}"],
+							"path": ["api", "account", "terminal"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Trading Operations",
+			"item": [
+				{
+					"name": "Calculate Margin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbol\": \"EURUSD\",\n  \"volume\": 1.0,\n  \"leverage\": 100,\n  \"action\": \"BUY\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trading/calculate-margin",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "calculate-margin"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Calculate Margin - Gold",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbol\": \"XAUUSD\",\n  \"volume\": 0.1,\n  \"leverage\": 50,\n  \"action\": \"BUY\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trading/calculate-margin",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "calculate-margin"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Calculate Margin - Crypto",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbol\": \"BTCUSD\",\n  \"volume\": 0.01,\n  \"leverage\": 10,\n  \"action\": \"BUY\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trading/calculate-margin",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "calculate-margin"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Place Buy Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbol\": \"EURUSD\",\n  \"volume\": 0.1,\n  \"sl\": 1.0500,\n  \"tp\": 1.1000,\n  \"comment\": \"Test buy order from Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trading/buy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "buy"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Place Sell Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbol\": \"EURUSD\",\n  \"volume\": 0.1,\n  \"sl\": 1.1000,\n  \"tp\": 1.0500,\n  \"comment\": \"Test sell order from Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trading/sell",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "sell"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Positions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/trading/positions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "positions"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Close Position",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ticket\": 123456789\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trading/close",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "close"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/trading/orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "orders"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ticket\": 123456789\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trading/cancel",
+							"host": ["{{base_url}}"],
+							"path": ["api", "trading", "cancel"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Market Data",
+			"item": [
+				{
+					"name": "Get Symbol Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/market/symbol/EURUSD",
+							"host": ["{{base_url}}"],
+							"path": ["api", "market", "symbol", "EURUSD"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Symbol Info - Gold",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/market/symbol/XAUUSD",
+							"host": ["{{base_url}}"],
+							"path": ["api", "market", "symbol", "XAUUSD"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tick Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/market/tick/EURUSD",
+							"host": ["{{base_url}}"],
+							"path": ["api", "market", "tick", "EURUSD"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Historical Rates",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbol\": \"EURUSD\",\n  \"timeframe\": \"M5\",\n  \"count\": 100\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/market/rates",
+							"host": ["{{base_url}}"],
+							"path": ["api", "market", "rates"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Historical Rates - Date Range",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbol\": \"EURUSD\",\n  \"timeframe\": \"M5\",\n  \"date_from\": \"2025-08-30\",\n  \"date_to\": \"2025-08-31\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/market/rates",
+							"host": ["{{base_url}}"],
+							"path": ["api", "market", "rates"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Range Detection",
+			"item": [
+				{
+					"name": "Get All Symbols Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ranges/fetch-data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ranges", "fetch-data"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Symbol Mapping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ranges/symbols",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ranges", "symbols"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Calculated Ranges",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ranges/calculated",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ranges", "calculated"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Merged Ranges",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ranges/merged",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ranges", "merged"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Calculated Ranges - Specific Symbol",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ranges/calculated?symbol=EURUSD",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ranges", "calculated"],
+							"query": [
+								{
+									"key": "symbol",
+									"value": "EURUSD"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Merged Ranges - Specific Symbol",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ranges/merged?symbol=XAUUSD",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ranges", "merged"],
+							"query": [
+								{
+									"key": "symbol",
+									"value": "XAUUSD"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Clear Cache",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ranges/clear-cache",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ranges", "clear-cache"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		}
+	]
+}
