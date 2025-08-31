@@ -1,10 +1,11 @@
-from flask import Blueprint, jsonify, request
 import logging
-import pandas as pd
 from urllib.parse import unquote_plus
-from services.range_service import range_service
+
+import pandas as pd
+from flask import Blueprint, jsonify, request
+
 from constants.instruments import InstrumentConstants
-from utils.response_helpers import validate_required_fields
+from services.range_service import range_service
 
 logger = logging.getLogger(__name__)
 
@@ -31,40 +32,40 @@ def fetch_data():
         for symbol_key in all_symbols:
             rates_df = range_service.rates_data.get(symbol_key, pd.DataFrame())
             calculated_df = range_service.calculated_ranges.get(symbol_key, pd.DataFrame())
-            merged_df = range_service.merged_ranges.get(symbol_key, pd.DataFrame())
+            df = range_service.merged_ranges.get(symbol_key, pd.DataFrame())
+            if df is None or df.empty:
+                continue
+            dfx = df.copy()
+            if "symbol" not in dfx.columns:
+                dfx["symbol"] = symbol_key
+            data.append(dfx)
+
+        combined_merged = pd.concat(data) if data else pd.DataFrame()
+        combined_merged = combined_merged.iloc[::-1]
             
             # Build result showing data availability
-            symbol_data = {
-                "symbol": symbol_key,
-                "rates_count": len(rates_df) if not rates_df.empty else 0,
-                "calculated_ranges_count": len(calculated_df) if not calculated_df.empty else 0,
-                "merged_ranges_count": len(merged_df) if not merged_df.empty else 0,
-                "has_rates_data": not rates_df.empty,
-                "has_calculated_ranges": not calculated_df.empty,
-                "has_merged_ranges": not merged_df.empty
-            }
+            # symbol_data = {
+            #     "symbol": symbol_key,
+            #     "rates_count": len(rates_df) if not rates_df.empty else 0,
+            #     "calculated_ranges_count": len(calculated_df) if not calculated_df.empty else 0,
+            #     "merged_ranges_count": len(merged_df) if not merged_df.empty else 0,
+            #     "has_rates_data": not rates_df.empty,
+            #     "has_calculated_ranges": not calculated_df.empty,
+            #     "has_merged_ranges": not merged_df.empty
+            # }
             
             # Add sample data if available
-            if not rates_df.empty:
-                symbol_data["rates_sample"] = rates_df.head(3).to_dict('records')
-            if not calculated_df.empty:
-                symbol_data["calculated_ranges"] = calculated_df.to_dict('records')
-            if not merged_df.empty:
-                symbol_data["merged_ranges"] = merged_df.to_dict('records')
-                
-            data.append(symbol_data)
-        
+            # if not rates_df.empty:
+            #     symbol_data["rates_sample"] = rates_df.head(3).to_dict('records')
+            # if not calculated_df.empty:
+            #     symbol_data["calculated_ranges"] = calculated_df.to_dict('records')
+            # if not merged_df.empty:
+            #     symbol_data["merged_ranges"] = merged_df.to_dict('records')
+
+
         return jsonify({
-            "success": True,
-            "data": data,
             "data_length": len(data),
-            "description": "Direct access to initialized range service storage",
-            "storage_info": {
-                "rates_data_symbols": len(range_service.rates_data),
-                "calculated_ranges_symbols": len(range_service.calculated_ranges),
-                "merged_ranges_symbols": len(range_service.merged_ranges),
-                "sequential_workflow_status": "Service initialized and ready for data access"
-            }
+            "data": combined_merged.to_dict(orient="records")
         }), 200
 
     except ValueError as e:

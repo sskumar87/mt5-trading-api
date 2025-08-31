@@ -1,8 +1,10 @@
-from flask import Blueprint, jsonify, request
 import logging
 from datetime import datetime
+
+from flask import Blueprint, jsonify, request
+
+from old_app.mt5.pip_value import pip_value_usd
 from services.market_data_service import market_data_service
-from utils.response_helpers import validate_required_fields
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,34 @@ market_data_bp = Blueprint('market_data', __name__)
 def get_symbol_info(symbol):
     """Get detailed information about a symbol"""
     try:
-        result = market_data_service.get_symbol_info(symbol.upper())
+        tick_info = market_data_service.get_symbol_info_obj(symbol.upper())
+        print(f"Fetching tick data for symbol: {symbol}")
+        # print(json.dumps(mt5.symbol_info(symbol)._asdict(), indent=2))
+        pip_value = pip_value_usd(tick_info['data'])
+        print(f"PIP value for {symbol}: {pip_value}")
+        if tick_info is not None:
+            result = {
+                "data": {
+                    "symbol": symbol,
+                    "bid": tick_info['data'].bid,
+                    "bidHigh": tick_info['data'].bidhigh,
+                    "bidLow": tick_info['data'].bidlow,
+                    "ask": tick_info['data'].ask,
+                    "askHigh": tick_info['data'].askhigh,
+                    "askLow": tick_info['data'].asklow,
+                    "digits": tick_info['data'].digits,
+                    "spread": tick_info['data'].spread,
+                    "point": tick_info['data'].point,
+                    "pipValue": pip_value,
+                    "tradeTickSize": tick_info['data'].trade_tick_size,
+                    "tradeTickValueProfit": tick_info['data'].trade_tick_value_profit,
+                    "tradeTickValue": tick_info['data'].trade_tick_value,
+                    "volumeStep": tick_info['data'].volume_step,
+                    "volumeMin": tick_info['data'].volume_min,
+                    "volumeMax": tick_info['data'].volume_max
+                },
+                "success": True
+            }
         return jsonify(result), 200 if result["success"] else 400
     except Exception as e:
         logger.error(f"Error in symbol info endpoint: {str(e)}")

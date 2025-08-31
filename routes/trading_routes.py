@@ -1,5 +1,9 @@
-from flask import Blueprint, jsonify, request
 import logging
+
+from decorator import EMPTY
+from flask import Blueprint, jsonify, request
+
+from services.order import map_fill, map_time, place_order
 from services.trading_service import trading_service
 from utils.response_helpers import validate_required_fields
 
@@ -11,43 +15,30 @@ trading_bp = Blueprint('trading', __name__)
 def send_order():
     """Send a trading order"""
     try:
-        data = request.get_json()
-        
-        # Validate required fields
-        required_fields = ['action', 'symbol', 'volume']
-        validation_result = validate_required_fields(data, required_fields)
-        if not validation_result["valid"]:
-            return jsonify({"success": False, "error": validation_result["error"]}), 400
-        
-        # Extract parameters
-        action = data.get('action').upper()
-        symbol = data.get('symbol').upper()
-        volume = float(data.get('volume'))
-        order_type = data.get('order_type', 'market').lower()
-        price = data.get('price')
-        sl = data.get('sl')
-        tp = data.get('tp')
-        comment = data.get('comment', '')
-        
-        if price is not None:
-            price = float(price)
-        if sl is not None:
-            sl = float(sl)
-        if tp is not None:
-            tp = float(tp)
-        
-        result = trading_service.send_order(
-            action=action,
-            symbol=symbol,
-            volume=volume,
-            order_type=order_type,
-            price=price,
-            sl=sl,
-            tp=tp,
-            comment=comment
+        req = request.get_json()
+        type_filling = map_fill(req['type_filling'])
+        type_time = map_time(req['type_time'])
+        result = place_order(
+            symbol=req.get('symbol'),
+            side=req.get('side'),
+            volume=req.get('volume'),
+            kind=req.get('kind'),
+            price=req.get('price'),
+            stoplimit=req.get("stoplimit"),
+            deviation=req.get("deviation"),
+            sl_points=req.get('sl_points'),
+            tp_points=req.get('tp_points'),
+            sl_price=req.get('sl_price'),
+            tp_price=req.get('tp_price'),
+            magic=req.get('magic'),
+            comment=req.get('comment'),
+            do_order_check=req.get('do_order_check'),
+            type_filling=type_filling,
+            type_time=type_time,
+            expiration=req.get('expiration'),
         )
-        
-        return jsonify(result), 200 if result["success"] else 400
+
+        return jsonify(result), 200 if result.ok else 400
         
     except ValueError as e:
         return jsonify({"success": False, "error": f"Invalid numeric value: {str(e)}"}), 400

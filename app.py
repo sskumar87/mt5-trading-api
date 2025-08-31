@@ -22,7 +22,7 @@ from services.range_service import range_service
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('mt5_api.log'),
@@ -75,6 +75,25 @@ def create_app():
             "service": "MT5 Trading API",
             "version": "1.0.0"
         }
+
+    @app.route('/api/fetch_symbol_map')
+    def symbol_map():
+        """Health check endpoint"""
+        return {
+            "status": "healthy",
+            "service": "MT5 Trading API",
+            "data": {
+                "XAUUSD": ["XAUUSD", 1.5],
+                "BTCUSD": ["BTCUSD", 50],
+                "ETHUSD": ["ETHUSD", 5],
+                "NAS100": ["NAS100", 5],
+                "GBPUSD": ["GBPUSD", 0.00030],
+                "EURUSD": ["EURUSD", 0.00030],
+                "USDJPY": ["USDJPY", 0.003]
+            }
+        }
+
+
     
     return app
 
@@ -97,14 +116,6 @@ def start_scheduler():
             )
             
             logger.info(f"Scheduled fetch completed. Retrieved data for {len(result)} symbols")
-            
-            # Calculate ranges for all symbols that have data
-            if result:
-                logger.info("Calculating ranges for all symbols...")
-                ranges_result = range_service.calculate_ranges_for_all_symbols(lookback=4)
-                logger.info(f"Range calculation completed. Calculated ranges for {len(ranges_result)} symbols")
-            else:
-                logger.warning("No data available for range calculation")
             
         except Exception as e:
             logger = logging.getLogger(__name__)
@@ -153,7 +164,7 @@ def start_scheduler():
         # Calculate ranges for initial data
         if result:
             logger.info("Calculating ranges for initial data...")
-            ranges_result = range_service.calculate_ranges_for_all_symbols(lookback=4)
+            ranges_result = range_service.fetch_all_symbols_data()
             logger.info(f"Initial range calculation completed. Calculated ranges for {len(ranges_result)} symbols")
         else:
             logger.warning("No initial data available for range calculation")
@@ -164,4 +175,4 @@ def start_scheduler():
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=5001, debug=True)

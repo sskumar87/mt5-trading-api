@@ -1,10 +1,14 @@
-import pandas as pd
-import numpy as np
-from typing import List, Dict, Optional, Tuple, Union
-from datetime import datetime, timedelta, time, timezone
 import logging
-from services.mt5_service import mt5_service
+from datetime import datetime, timedelta, time
+from typing import List, Dict, Optional, Union
+
+import numpy as np
+import pandas as pd
+
 from constants.instruments import InstrumentConstants
+from services.market_data_service import market_data_service
+from services.mt5_service import mt5_service
+
 # Will import old_app functions dynamically to avoid MT5 import issues
 try:
     import MetaTrader5 as mt5
@@ -423,8 +427,11 @@ class RangeService:
                     instrument = InstrumentConstants.get_instrument(symbol_key)
                     if not instrument:
                         continue
+
+
                         
-                    mt5_symbol = instrument.symbol
+                    mt5_symbol = market_data_service.get_symbol_info_obj(symbol_key)['data'].name
+
                     logger.info(f"Sequential processing: {symbol_key} -> {mt5_symbol}")
                     
                     # Step 1: Fetch rates using built-in mt5_fetch_rates method
@@ -446,7 +453,7 @@ class RangeService:
                                 logger.info(f"Step 2 - Calculated {len(body_ranges_df)} ranges for {symbol_key}")
                                 
                                 # Step 3: Merge ranges using old_app logic and store as DataFrame
-                                merged_ranges_df = self.merge_overlapping_ranges(body_ranges_df)
+                                merged_ranges_df = self.merge_ranges(body_ranges_df)
                                 if not merged_ranges_df.empty:
                                     self.merged_ranges[symbol_key] = merged_ranges_df
                                     logger.info(f"Step 3 - Merged to {len(merged_ranges_df)} ranges for {symbol_key}")
@@ -482,121 +489,7 @@ class RangeService:
     def get_all_stored_symbols(self) -> List[str]:
         """Get list of all symbols with stored rates data"""
         return list(self.rates_data.keys())
-    
-    def calculate_ranges_for_all_symbols(self, lookback: int = 4) -> Dict[str, Dict]:
-        """Calculate ranges for all symbols that have stored data"""
-        try:
-            all_ranges = {}
-            logger.info(f"Calculating ranges for {len(self.symbol_data)} symbols")
-            
-            for symbol_key, df in self.symbol_data.items():
-                try:
-                    if df is None or df.empty:
-                        logger.warning(f"No data available for {symbol_key}")
-                        continue
-                    
-                    # Get appropriate range size for symbol
-                    range_size = self.get_symbol_range_size(symbol_key)
-                    
-                    # Calculate body ranges using the ranges function from old_app
-                    body_ranges = self.find_body_ranges(df, lookback, range_size)
-                    
-                    if body_ranges.empty:
-                        logger.info(f"No ranges found for {symbol_key}")
-                        
-                        # Store empty results in calculated_ranges
-                        self.calculated_ranges[symbol_key] = {
-                            "symbol": symbol_key,
-                            "lookback": lookback,
-                            "range_size": range_size,
-                            "body_ranges_count": 0,
-                            "body_ranges": [],
-                            "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
-                            "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None,
-                            "calculation_timestamp": datetime.now().isoformat()
-                        }
-                        
-                        # Store empty results in merged_ranges
-                        self.merged_ranges[symbol_key] = {
-                            "symbol": symbol_key,
-                            "lookback": lookback,
-                            "range_size": range_size,
-                            "merged_ranges_count": 0,
-                            "merged_ranges": [],
-                            "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
-                            "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None,
-                            "merge_timestamp": datetime.now().isoformat()
-                        }
-                        
-                        # Store combined empty results for backward compatibility
-                        all_ranges[symbol_key] = {
-                            "symbol": symbol_key,
-                            "lookback": lookback,
-                            "range_size": range_size,
-                            "body_ranges_count": 0,
-                            "merged_ranges_count": 0,
-                            "body_ranges": [],
-                            "merged_ranges": [],
-                            "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
-                            "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None
-                        }
-                        continue
-                    
-                    # Merge consecutive ranges using old_app merge_ranges function
-                    merged_ranges = self.merge_ranges_oldapp(body_ranges)
-                    
-                    # Store raw body ranges in calculated_ranges
-                    self.calculated_ranges[symbol_key] = {
-                        "symbol": symbol_key,
-                        "lookback": lookback,
-                        "range_size": range_size,
-                        "body_ranges_count": len(body_ranges),
-                        "body_ranges": body_ranges.to_dict('records'),
-                        "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
-                        "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None,
-                        "calculation_timestamp": datetime.now().isoformat()
-                    }
-                    
-                    # Store merged ranges in merged_ranges
-                    self.merged_ranges[symbol_key] = {
-                        "symbol": symbol_key,
-                        "lookback": lookback,
-                        "range_size": range_size,
-                        "merged_ranges_count": len(merged_ranges),
-                        "merged_ranges": merged_ranges.to_dict('records'),
-                        "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
-                        "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None,
-                        "merge_timestamp": datetime.now().isoformat()
-                    }
-                    
-                    # Store combined results for backward compatibility
-                    all_ranges[symbol_key] = {
-                        "symbol": symbol_key,
-                        "lookback": lookback,
-                        "range_size": range_size,
-                        "body_ranges_count": len(body_ranges),
-                        "merged_ranges_count": len(merged_ranges),
-                        "body_ranges": body_ranges.to_dict('records'),
-                        "merged_ranges": merged_ranges.to_dict('records'),
-                        "data_start_time": str(df.iloc[0]["time"]) if not df.empty else None,
-                        "data_end_time": str(df.iloc[-1]["time"]) if not df.empty else None
-                    }
-                    
-                    logger.info(f"Calculated {len(body_ranges)} body ranges, {len(merged_ranges)} merged ranges for {symbol_key}")
-                    
-                except Exception as e:
-                    logger.error(f"Error calculating ranges for {symbol_key}: {str(e)}")
-                    continue
-            
-            # Store calculated ranges in local variable
-            self.calculated_ranges = all_ranges
-            
-            logger.info(f"Successfully calculated ranges for {len(all_ranges)} symbols")
-            return all_ranges
-            
-        except Exception as e:
-            logger.error(f"Error calculating ranges for all symbols: {str(e)}")
-            return {}
+
     
     def clear_cache(self, symbol: Optional[str] = None):
         """Clear cache for specific symbol or all symbols"""

@@ -16,7 +16,7 @@ except ImportError:
         def to_datetime(data, unit=None):
             return data
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 from services.mt5_service import mt5_service
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,29 @@ class MarketDataService:
                 }
             }
             
+        except Exception as e:
+            logger.error(f"Error getting symbol info: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def get_symbol_info_obj(self, symbol: str):
+        """Get detailed information about a symbol"""
+        try:
+            if not self.mt5_service.check_connection():
+                reconnect_result = self.mt5_service.initialize_connection()
+                if not reconnect_result["success"]:
+                    return reconnect_result
+
+            symbol_info = mt5.symbol_info(symbol)
+            if symbol_info is None:
+                symbol_info = mt5.symbol_info(symbol + "+")
+                if symbol_info is None:
+                    return {"success": False, "error": f"Symbol {symbol} not found"}
+
+            return {
+                "success": True,
+                "data": symbol_info
+            }
+
         except Exception as e:
             logger.error(f"Error getting symbol info: {str(e)}")
             return {"success": False, "error": str(e)}
@@ -280,6 +303,21 @@ class MarketDataService:
         except Exception as e:
             logger.error(f"Error searching symbols: {str(e)}")
             return {"success": False, "error": str(e)}
+
+    def pip_value_usd(info, volume=1.0):
+        """
+        info: mt5.symbol_info(symbol)
+        Returns USD pip value for the given volume (assumes profit currency = USD).
+        """
+        point = info.point or 0.0
+        digits = info.digits
+        tick_size = getattr(info, "trade_tick_size", point) or point
+        tick_value = getattr(info, "trade_tick_value", 0.0) or getattr(info, "trade_tick_value_profit", 0.0)
+
+        # pip size: for 5-digit (or 3-digit JPY-style) instruments, pip = 10 * point; else pip = point
+        pip_size = point * 10 if digits in (3, 5) else point
+
+        return (pip_size / tick_size) * tick_value * float(volume)
 
 # Global instance
 market_data_service = MarketDataService()
