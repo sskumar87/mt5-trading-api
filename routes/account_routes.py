@@ -59,3 +59,13 @@ def disconnect():
     except Exception as e:
         logger.error(f"Error in disconnect endpoint: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+@account_bp.route('/timezone', methods=['GET'])
+def timezone_info():
+    """Get timezone information for broker and local time"""
+    try:
+        result = mt5_service.get_timezone_info()
+        return jsonify(result), 200 if result["success"] else 400
+    except Exception as e:
+        logger.error(f"Error in timezone info endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500

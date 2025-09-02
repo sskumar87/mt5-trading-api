@@ -5,6 +5,8 @@ except ImportError:
     import services.mock_mt5 as mt5
 import logging
 import os
+import pytz
+from datetime import datetime, timezone
 from typing import Dict, Optional, Any
 from config import Config
 
@@ -17,6 +19,9 @@ class MT5Service:
         self.config = Config()
         self.is_connected = False
         self.connection_info = None
+        # Initialize timezone handling
+        self.LOCAL_TZ = pytz.timezone("Australia/Sydney")
+        self.BROKER_TZ = pytz.FixedOffset(self.get_broker_offset())
     
     def initialize_connection(self) -> Dict[str, Any]:
         """Initialize connection to MetaTrader 5 terminal"""
@@ -108,6 +113,48 @@ class MT5Service:
             
         except Exception as e:
             logger.error(f"Error getting terminal info: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    def get_broker_offset(self, symbol: str = "XAUUSD") -> float:
+        """Fetch broker's UTC offset in minutes using tick time."""
+        try:
+            tick = mt5.symbol_info_tick(symbol)
+            if tick is None:
+                logger.info(f"Failed to fetch tick for {symbol}")
+                return 0.0  # fallback to UTC
+
+            # Broker server time from tick (UTC aware)
+            server_time = datetime.fromtimestamp(tick.time, tz=timezone.utc)
+            utc_now = datetime.now(timezone.utc)
+            local_time = datetime.now()
+            logger.info(f"Server time {server_time} local time {local_time}")
+
+            # Offset in minutes (broker time - UTC time)
+            return (server_time - utc_now).total_seconds() / 60
+        except Exception as e:
+            logger.warning(f"Error getting broker offset: {str(e)}")
+            return 0.0  # fallback to UTC
+    
+    def get_timezone_info(self) -> Dict[str, Any]:
+        """Get timezone information for debugging and display"""
+        try:
+            broker_offset_minutes = self.get_broker_offset()
+            broker_offset_hours = broker_offset_minutes / 60
+            
+            return {
+                "success": True,
+                "data": {
+                    "local_timezone": str(self.LOCAL_TZ),
+                    "broker_offset_minutes": broker_offset_minutes,
+                    "broker_offset_hours": broker_offset_hours,
+                    "broker_timezone": str(self.BROKER_TZ),
+                    "current_utc": datetime.now(timezone.utc).isoformat(),
+                    "current_local": datetime.now(self.LOCAL_TZ).isoformat(),
+                    "current_broker": datetime.now(self.BROKER_TZ).isoformat() if hasattr(self, 'BROKER_TZ') else "Not available"
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting timezone info: {str(e)}")
             return {"success": False, "error": str(e)}
     
     def shutdown(self) -> Dict[str, Any]:

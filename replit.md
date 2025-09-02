@@ -6,6 +6,13 @@ The system serves as middleware between web clients and the MT5 platform, handli
 
 # Recent Changes
 
+## 2025-09-02: Timezone Handling Enhancement
+- **Timezone Support**: Added Australia/Sydney local timezone and broker timezone handling to MT5 service
+- **Broker Offset Detection**: Implemented `get_broker_offset()` method to fetch broker's UTC offset using tick data
+- **Timezone Information API**: Added `/api/account/timezone` endpoint for timezone debugging and display
+- **Class Variables**: Added `LOCAL_TZ` and `BROKER_TZ` as class-level variables for consistent timezone handling
+- **Time Conversion Ready**: Infrastructure prepared for accurate time conversions between local, broker, and UTC times
+
 ## 2025-08-31: Margin Calculation API for Alertwatch React App
 - **New Endpoint**: Added `/api/trading/calculate-margin` endpoint for position margin calculations
 - **Risk Management Integration**: Designed specifically for Alertwatch React app's Risk Management & Lot Calculator component
