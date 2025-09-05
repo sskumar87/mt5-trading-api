@@ -6,6 +6,15 @@ The system serves as middleware between web clients and the MT5 platform, handli
 
 # Recent Changes
 
+## 2025-09-05: MT5 Historical Orders Data Mapper
+- **Data Mapper Implementation**: Created comprehensive `MT5OrderDataMapper` class to convert numeric codes from MT5 historical orders to meaningful text
+- **Complete Field Mapping**: Maps order types, states, reasons, time types, and filling types with human-readable descriptions
+- **Enhanced Order Data**: Adds calculated fields like execution percentage, direction, market/pending flags, and comprehensive timestamps
+- **Historical Orders API**: Added `/api/trading/history/orders` endpoint for retrieving and mapping historical order data
+- **Orders Summary API**: Added `/api/trading/history/orders/summary` endpoint for statistical analysis of order history
+- **Flexible Date Filtering**: Support for date range filtering and symbol-specific queries with optional data mapping
+- **Order Analysis**: Automatic calculation of execution rates, order type breakdowns, and trading pattern analysis
+
 ## 2025-09-02: Timezone Handling Enhancement
 - **Timezone Support**: Added Australia/Sydney local timezone and broker timezone handling to MT5 service
 - **Broker Offset Detection**: Implemented `get_broker_offset()` method to fetch broker's UTC offset using tick data

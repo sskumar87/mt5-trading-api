@@ -1,6 +1,8 @@
 import logging
+from datetime import datetime
 from flask import Blueprint, jsonify, request
 from services.trading_service import trading_service
+from services.mt5_service import mt5_service
 from utils.response_helpers import validate_required_fields
 
 logger = logging.getLogger(__name__)
@@ -199,4 +201,188 @@ def calculate_margin():
         return jsonify({"success": False, "error": f"Invalid numeric value: {str(e)}"}), 400
     except Exception as e:
         logger.error(f"Error in calculate margin endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@trading_bp.route('/history/orders', methods=['GET'])
+def get_historical_orders():
+    """
+    Get historical orders with mapped data
+    
+    Query Parameters:
+    - from_date: Start date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+    - to_date: End date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+    - symbol: Symbol filter (optional)
+    - map_data: Whether to map numeric codes to text (default: true)
+    
+    Example URLs:
+    /api/trading/history/orders
+    /api/trading/history/orders?symbol=XAUUSD
+    /api/trading/history/orders?from_date=2024-01-01&to_date=2024-01-31
+    /api/trading/history/orders?map_data=false
+    """
+    try:
+        # Parse query parameters
+        from_date_str = request.args.get('from_date')
+        to_date_str = request.args.get('to_date')
+        symbol = request.args.get('symbol')
+        map_data = request.args.get('map_data', 'true').lower() == 'true'
+        
+        # Parse dates if provided
+        from_date = None
+        to_date = None
+        
+        if from_date_str:
+            try:
+                # Try different date formats
+                if len(from_date_str) == 10:  # YYYY-MM-DD
+                    from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+                else:  # YYYY-MM-DD HH:MM:SS
+                    from_date = datetime.strptime(from_date_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return jsonify({
+                    "success": False, 
+                    "error": "Invalid from_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                }), 400
+        
+        if to_date_str:
+            try:
+                # Try different date formats
+                if len(to_date_str) == 10:  # YYYY-MM-DD
+                    to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+                else:  # YYYY-MM-DD HH:MM:SS
+                    to_date = datetime.strptime(to_date_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return jsonify({
+                    "success": False, 
+                    "error": "Invalid to_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                }), 400
+        
+        # Get historical orders
+        result = mt5_service.get_historical_orders(
+            from_date=from_date,
+            to_date=to_date,
+            symbol=symbol,
+            map_data=map_data
+        )
+        
+        return jsonify(result), 200 if result["success"] else 400
+        
+    except Exception as e:
+        logger.error(f"Error in historical orders endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@trading_bp.route('/history/orders/summary', methods=['GET'])
+def get_orders_summary():
+    """
+    Get a summary of historical orders with key statistics
+    
+    Query Parameters:
+    - from_date: Start date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+    - to_date: End date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+    - symbol: Symbol filter (optional)
+    """
+    try:
+        # Parse query parameters (same as above)
+        from_date_str = request.args.get('from_date')
+        to_date_str = request.args.get('to_date')
+        symbol = request.args.get('symbol')
+        
+        # Parse dates if provided
+        from_date = None
+        to_date = None
+        
+        if from_date_str:
+            try:
+                if len(from_date_str) == 10:  # YYYY-MM-DD
+                    from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+                else:  # YYYY-MM-DD HH:MM:SS
+                    from_date = datetime.strptime(from_date_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return jsonify({
+                    "success": False, 
+                    "error": "Invalid from_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                }), 400
+        
+        if to_date_str:
+            try:
+                if len(to_date_str) == 10:  # YYYY-MM-DD
+                    to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+                else:  # YYYY-MM-DD HH:MM:SS
+                    to_date = datetime.strptime(to_date_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return jsonify({
+                    "success": False, 
+                    "error": "Invalid to_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                }), 400
+        
+        # Get historical orders with mapping
+        result = mt5_service.get_historical_orders(
+            from_date=from_date,
+            to_date=to_date,
+            symbol=symbol,
+            map_data=True
+        )
+        
+        if not result["success"]:
+            return jsonify(result), 400
+        
+        orders = result["data"]["orders"]
+        
+        # Calculate summary statistics
+        total_orders = len(orders)
+        buy_orders = len([o for o in orders if o.get('direction') == 'BUY'])
+        sell_orders = len([o for o in orders if o.get('direction') == 'SELL'])
+        filled_orders = len([o for o in orders if o.get('state_text') == 'FILLED'])
+        canceled_orders = len([o for o in orders if o.get('state_text') == 'CANCELED'])
+        pending_orders = len([o for o in orders if o.get('is_pending', False)])
+        
+        # Group by order types
+        order_types = {}
+        for order in orders:
+            order_type = order.get('type_text', 'UNKNOWN')
+            order_types[order_type] = order_types.get(order_type, 0) + 1
+        
+        # Group by symbols
+        symbols = {}
+        for order in orders:
+            symbol_name = order.get('symbol', 'UNKNOWN')
+            symbols[symbol_name] = symbols.get(symbol_name, 0) + 1
+        
+        # Group by order sources
+        sources = {}
+        for order in orders:
+            source = order.get('reason_text', 'UNKNOWN')
+            sources[source] = sources.get(source, 0) + 1
+        
+        summary = {
+            "success": True,
+            "data": {
+                "period": {
+                    "from_date": result["data"]["from_date"],
+                    "to_date": result["data"]["to_date"],
+                    "symbol_filter": symbol
+                },
+                "totals": {
+                    "total_orders": total_orders,
+                    "buy_orders": buy_orders,
+                    "sell_orders": sell_orders,
+                    "filled_orders": filled_orders,
+                    "canceled_orders": canceled_orders,
+                    "pending_orders": pending_orders
+                },
+                "breakdown": {
+                    "by_type": order_types,
+                    "by_symbol": symbols,
+                    "by_source": sources
+                },
+                "execution_rate": round((filled_orders / total_orders * 100), 2) if total_orders > 0 else 0
+            }
+        }
+        
+        return jsonify(summary), 200
+        
+    except Exception as e:
+        logger.error(f"Error in orders summary endpoint: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500

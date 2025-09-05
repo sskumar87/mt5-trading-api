@@ -157,6 +157,71 @@ class MT5Service:
             logger.error(f"Error getting timezone info: {str(e)}")
             return {"success": False, "error": str(e)}
     
+    def get_historical_orders(self, from_date: datetime = None, to_date: datetime = None, 
+                            symbol: str = None, map_data: bool = True) -> Dict[str, Any]:
+        """
+        Get historical orders with optional data mapping
+        
+        Args:
+            from_date: Start date for order history (defaults to 30 days ago)
+            to_date: End date for order history (defaults to now)
+            symbol: Optional symbol filter
+            map_data: Whether to map numeric codes to text (default: True)
+            
+        Returns:
+            Dict with success status and order data
+        """
+        try:
+            if not self.check_connection():
+                reconnect_result = self.initialize_connection()
+                if not reconnect_result["success"]:
+                    return reconnect_result
+            
+            # Set default date range if not provided
+            if to_date is None:
+                to_date = datetime.now()
+            if from_date is None:
+                from_date = datetime.now().replace(day=1)  # Start of current month
+            
+            # Get historical orders
+            if symbol:
+                # Filter by symbol
+                orders = mt5.history_orders_get(from_date, to_date, group=symbol)
+            else:
+                # Get all orders
+                orders = mt5.history_orders_get(from_date, to_date)
+            
+            if orders is None:
+                return {
+                    "success": False, 
+                    "error": "Failed to retrieve historical orders",
+                    "mt5_error": mt5.last_error()
+                }
+            
+            # Convert orders to list of dicts
+            orders_data = [order._asdict() if hasattr(order, '_asdict') else order for order in orders]
+            
+            # Apply data mapping if requested
+            if map_data:
+                from utils.mt5_data_mapper import map_orders_list
+                orders_data = map_orders_list(orders_data)
+            
+            return {
+                "success": True,
+                "data": {
+                    "orders": orders_data,
+                    "count": len(orders_data),
+                    "from_date": from_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    "to_date": to_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    "symbol_filter": symbol,
+                    "data_mapped": map_data
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting historical orders: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
     def shutdown(self) -> Dict[str, Any]:
         """Shutdown MT5 connection"""
         try:

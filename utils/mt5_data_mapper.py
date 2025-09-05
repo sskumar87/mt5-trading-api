@@ -1,0 +1,229 @@
+"""
+MT5 Historical Orders Data Mapper
+
+This module provides mapping functions to convert numeric codes from MT5 historical orders
+to meaningful text descriptions.
+
+Based on MT5 API documentation and TradeOrder structure:
+dict_keys(['ticket', 'time_setup', 'time_setup_msc', 'time_done', 'time_done_msc', 
+'time_expiration', 'type', 'type_time', 'type_filling', 'state', 'magic', 
+'position_id', 'position_by_id', 'reason', 'volume_initial', 'volume_current', 
+'price_open', 'sl', 'tp', 'price_current', 'price_stoplimit', 'symbol', 
+'comment', 'external_id'])
+"""
+
+from typing import Dict, Any, Optional
+from datetime import datetime
+
+class MT5OrderDataMapper:
+    """Data mapper for MT5 historical order fields"""
+    
+    # Order Types Mapping
+    ORDER_TYPES = {
+        0: "BUY",
+        1: "SELL", 
+        2: "BUY_LIMIT",
+        3: "SELL_LIMIT",
+        4: "BUY_STOP",
+        5: "SELL_STOP",
+        6: "BUY_STOP_LIMIT",
+        7: "SELL_STOP_LIMIT"
+    }
+    
+    # Order States Mapping
+    ORDER_STATES = {
+        0: "STARTED",           # Order checked, but not yet accepted by broker
+        1: "PLACED",            # Order accepted
+        2: "CANCELED",          # Order canceled by client
+        3: "PARTIAL",           # Order partially executed
+        4: "FILLED",            # Order fully executed
+        5: "REJECTED",          # Order rejected
+        6: "EXPIRED",           # Order expired
+        7: "REQUEST_ADD",       # Order is being registered (placing to trading system)
+        8: "REQUEST_MODIFY",    # Order is being modified (changing its parameters)
+        9: "REQUEST_CANCEL"     # Order is being deleted (deleting from trading system)
+    }
+    
+    # Order Reasons Mapping
+    ORDER_REASONS = {
+        0: "CLIENT",            # Order placed manually
+        1: "MOBILE",            # Order placed from mobile application
+        2: "WEB",               # Order placed from web platform
+        3: "EXPERT",            # Order placed by Expert Advisor or script
+        4: "DEALER",            # Order placed by dealer
+        5: "SIGNAL"             # Order placed as a result of Signal service
+    }
+    
+    # Order Time Types Mapping
+    ORDER_TIME_TYPES = {
+        0: "GTC",               # Good till cancel
+        1: "DAY",               # Good till current trading day
+        2: "SPECIFIED",         # Good till specified date
+        3: "SPECIFIED_DAY"      # Good till specified day
+    }
+    
+    # Order Filling Types Mapping
+    ORDER_FILLING_TYPES = {
+        0: "FOK",               # Fill or Kill
+        1: "IOC",               # Immediate or Cancel
+        2: "RETURN"             # Return (used for market orders)
+    }
+    
+    @classmethod
+    def map_order_type(cls, order_type: int) -> str:
+        """Map order type code to text"""
+        return cls.ORDER_TYPES.get(order_type, f"UNKNOWN_TYPE_{order_type}")
+    
+    @classmethod
+    def map_order_state(cls, state: int) -> str:
+        """Map order state code to text"""
+        return cls.ORDER_STATES.get(state, f"UNKNOWN_STATE_{state}")
+    
+    @classmethod
+    def map_order_reason(cls, reason: int) -> str:
+        """Map order reason code to text"""
+        return cls.ORDER_REASONS.get(reason, f"UNKNOWN_REASON_{reason}")
+    
+    @classmethod
+    def map_time_type(cls, time_type: int) -> str:
+        """Map order time type code to text"""
+        return cls.ORDER_TIME_TYPES.get(time_type, f"UNKNOWN_TIME_TYPE_{time_type}")
+    
+    @classmethod
+    def map_filling_type(cls, filling_type: int) -> str:
+        """Map order filling type code to text"""
+        return cls.ORDER_FILLING_TYPES.get(filling_type, f"UNKNOWN_FILLING_{filling_type}")
+    
+    @classmethod
+    def format_timestamp(cls, timestamp: int) -> str:
+        """Convert Unix timestamp to readable datetime string"""
+        if timestamp == 0:
+            return "Not set"
+        try:
+            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        except (ValueError, OSError):
+            return f"Invalid timestamp: {timestamp}"
+    
+    @classmethod
+    def map_order_complete(cls, order_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Complete mapping of order data with all numeric codes converted to text
+        
+        Args:
+            order_data: Raw order data from MT5 history_orders_get()
+            
+        Returns:
+            Dict with mapped fields and original data preserved
+        """
+        if not isinstance(order_data, dict):
+            # Handle MT5 order object - convert to dict first
+            if hasattr(order_data, '_asdict'):
+                order_data = order_data._asdict()
+            else:
+                # Try to convert object attributes to dict
+                order_data = {attr: getattr(order_data, attr) for attr in dir(order_data) 
+                             if not attr.startswith('_') and not callable(getattr(order_data, attr))}
+        
+        mapped_order = order_data.copy()
+        
+        # Add mapped fields
+        mapped_order.update({
+            # Order identification and timing
+            'ticket_str': str(order_data.get('ticket', 'N/A')),
+            'time_setup_formatted': cls.format_timestamp(order_data.get('time_setup', 0)),
+            'time_done_formatted': cls.format_timestamp(order_data.get('time_done', 0)),
+            'time_expiration_formatted': cls.format_timestamp(order_data.get('time_expiration', 0)),
+            
+            # Order type and characteristics
+            'type_text': cls.map_order_type(order_data.get('type', -1)),
+            'state_text': cls.map_order_state(order_data.get('state', -1)),
+            'reason_text': cls.map_order_reason(order_data.get('reason', -1)),
+            'time_type_text': cls.map_time_type(order_data.get('type_time', -1)),
+            'filling_type_text': cls.map_filling_type(order_data.get('type_filling', -1)),
+            
+            # Volume and pricing information
+            'volume_executed': order_data.get('volume_initial', 0) - order_data.get('volume_current', 0),
+            'is_fully_executed': order_data.get('volume_current', 0) == 0 and order_data.get('volume_initial', 0) > 0,
+            'execution_percentage': (
+                ((order_data.get('volume_initial', 0) - order_data.get('volume_current', 0)) / order_data.get('volume_initial', 1)) * 100
+                if order_data.get('volume_initial', 0) > 0 else 0
+            ),
+            
+            # Order direction
+            'direction': 'BUY' if order_data.get('type', -1) in [0, 2, 4, 6] else 'SELL',
+            'is_pending': order_data.get('type', -1) in [2, 3, 4, 5, 6, 7],
+            'is_market_order': order_data.get('type', -1) in [0, 1],
+            
+            # Status flags
+            'has_stop_loss': order_data.get('sl', 0) > 0,
+            'has_take_profit': order_data.get('tp', 0) > 0,
+            'has_expiration': order_data.get('time_expiration', 0) > 0,
+            
+            # Order source summary
+            'order_source_summary': f"{cls.map_order_reason(order_data.get('reason', -1))} - {cls.map_order_type(order_data.get('type', -1))} - {cls.map_order_state(order_data.get('state', -1))}"
+        })
+        
+        return mapped_order
+    
+    @classmethod
+    def map_orders_list(cls, orders_list: list) -> list:
+        """
+        Map a list of orders with complete field mapping
+        
+        Args:
+            orders_list: List of order objects/dicts from MT5
+            
+        Returns:
+            List of mapped orders
+        """
+        return [cls.map_order_complete(order) for order in orders_list]
+    
+    @classmethod
+    def get_order_summary(cls, order_data: Dict[str, Any]) -> str:
+        """
+        Generate a human-readable summary of an order
+        
+        Args:
+            order_data: Order data (mapped or unmapped)
+            
+        Returns:
+            String summary of the order
+        """
+        ticket = order_data.get('ticket', 'Unknown')
+        symbol = order_data.get('symbol', 'Unknown')
+        order_type = cls.map_order_type(order_data.get('type', -1))
+        state = cls.map_order_state(order_data.get('state', -1))
+        volume = order_data.get('volume_initial', 0)
+        
+        setup_time = cls.format_timestamp(order_data.get('time_setup', 0))
+        
+        return f"Order #{ticket}: {order_type} {volume} lots of {symbol} - Status: {state} (Created: {setup_time})"
+
+
+# Create global instance for easy access
+mt5_mapper = MT5OrderDataMapper()
+
+# Convenience functions for direct access
+def map_order_type(order_type: int) -> str:
+    """Map order type code to text"""
+    return mt5_mapper.map_order_type(order_type)
+
+def map_order_state(state: int) -> str:
+    """Map order state code to text"""
+    return mt5_mapper.map_order_state(state)
+
+def map_order_reason(reason: int) -> str:
+    """Map order reason code to text"""
+    return mt5_mapper.map_order_reason(reason)
+
+def map_order_complete(order_data: Any) -> Dict[str, Any]:
+    """Complete mapping of order data"""
+    return mt5_mapper.map_order_complete(order_data)
+
+def map_orders_list(orders_list: list) -> list:
+    """Map a list of orders"""
+    return mt5_mapper.map_orders_list(orders_list)
+
+def get_order_summary(order_data: Dict[str, Any]) -> str:
+    """Generate order summary"""
+    return mt5_mapper.get_order_summary(order_data)
