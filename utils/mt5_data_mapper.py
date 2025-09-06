@@ -14,6 +14,16 @@ dict_keys(['ticket', 'time_setup', 'time_setup_msc', 'time_done', 'time_done_msc
 
 from typing import Dict, Any, Optional
 from datetime import datetime
+try:
+    import pandas as pd
+except ImportError:
+    # Mock pandas functionality if not available
+    class pd:
+        @staticmethod
+        def to_datetime(data, unit=None):
+            if unit == "s":
+                return [datetime.fromtimestamp(t) for t in data]
+            return data
 
 class MT5OrderDataMapper:
     """Data mapper for MT5 historical order fields"""
@@ -95,14 +105,75 @@ class MT5OrderDataMapper:
         return cls.ORDER_FILLING_TYPES.get(filling_type, f"UNKNOWN_FILLING_{filling_type}")
     
     @classmethod
-    def format_timestamp(cls, timestamp: int) -> str:
-        """Convert Unix timestamp to readable datetime string"""
+    def format_timestamp(cls, timestamp: int, timezone_convert: bool = True) -> str:
+        """
+        Convert Unix timestamp to readable datetime string with timezone conversion
+        
+        Args:
+            timestamp: Unix timestamp in seconds
+            timezone_convert: Whether to apply timezone conversion logic from ranges service
+            
+        Returns:
+            Formatted datetime string
+        """
         if timestamp == 0:
             return "Not set"
         try:
-            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+            if timezone_convert:
+                # Apply the same timezone conversion logic as in ranges service
+                try:
+                    from services.mt5_service import mt5_service
+                    
+                    # Convert timestamp to pandas datetime
+                    dt_utc = pd.to_datetime([timestamp], unit="s")[0]
+                    
+                    # Localize to broker timezone then convert to local timezone
+                    dt_broker = dt_utc.tz_localize(mt5_service.BROKER_TZ)  # Localize MT5 broker time
+                    dt_local = dt_broker.tz_convert(mt5_service.LOCAL_TZ)  # Convert to Australia/Sydney
+                    
+                    return dt_local.strftime("%Y-%m-%d %H:%M:%S %Z")
+                except Exception:
+                    # Fallback to simple conversion if timezone conversion fails
+                    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S UTC")
+            else:
+                return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         except (ValueError, OSError):
             return f"Invalid timestamp: {timestamp}"
+    
+    @classmethod
+    def convert_order_timestamps(cls, order_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert all timestamp fields in order data using timezone conversion logic
+        
+        Args:
+            order_data: Order data dict containing timestamp fields
+            
+        Returns:
+            Dict with converted timezone-aware timestamps
+        """
+        timestamp_fields = ['time_setup', 'time_done', 'time_expiration']
+        converted_data = order_data.copy()
+        
+        for field in timestamp_fields:
+            if field in converted_data and converted_data[field] != 0:
+                try:
+                    from services.mt5_service import mt5_service
+                    
+                    # Convert using same logic as ranges service
+                    timestamp = converted_data[field]
+                    dt_utc = pd.to_datetime([timestamp], unit="s")[0]
+                    dt_broker = dt_utc.tz_localize(mt5_service.BROKER_TZ)  # Localize MT5 broker time  
+                    dt_local = dt_broker.tz_convert(mt5_service.LOCAL_TZ)   # Convert to Australia/Sydney
+                    
+                    # Store both original and converted timestamps
+                    converted_data[f"{field}_local"] = dt_local
+                    converted_data[f"{field}_formatted"] = dt_local.strftime("%Y-%m-%d %H:%M:%S %Z")
+                    
+                except Exception as e:
+                    # Fallback if timezone conversion fails
+                    converted_data[f"{field}_formatted"] = cls.format_timestamp(converted_data[field], False)
+        
+        return converted_data
     
     @classmethod
     def map_order_complete(cls, order_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -124,15 +195,13 @@ class MT5OrderDataMapper:
                 order_data = {attr: getattr(order_data, attr) for attr in dir(order_data) 
                              if not attr.startswith('_') and not callable(getattr(order_data, attr))}
         
-        mapped_order = order_data.copy()
+        # First apply timezone conversion to all timestamps
+        mapped_order = cls.convert_order_timestamps(order_data)
         
         # Add mapped fields
         mapped_order.update({
-            # Order identification and timing
+            # Order identification and timing (timezone-aware timestamps already added by convert_order_timestamps)
             'ticket_str': str(order_data.get('ticket', 'N/A')),
-            'time_setup_formatted': cls.format_timestamp(order_data.get('time_setup', 0)),
-            'time_done_formatted': cls.format_timestamp(order_data.get('time_done', 0)),
-            'time_expiration_formatted': cls.format_timestamp(order_data.get('time_expiration', 0)),
             
             # Order type and characteristics
             'type_text': cls.map_order_type(order_data.get('type', -1)),
