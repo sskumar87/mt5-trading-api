@@ -115,7 +115,7 @@ class MT5Service:
             logger.error(f"Error getting terminal info: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def get_broker_offset(self, symbol: str = "XAUUSD") -> float:
+    def get_broker_offset(self, symbol: str = "BTCUSD") -> float:
         """Fetch broker's UTC offset in minutes using tick time."""
         try:
             if not self.check_connection():

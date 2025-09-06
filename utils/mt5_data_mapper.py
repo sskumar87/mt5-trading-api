@@ -14,6 +14,7 @@ dict_keys(['ticket', 'time_setup', 'time_setup_msc', 'time_done', 'time_done_msc
 
 from typing import Dict, Any, Optional
 from datetime import datetime
+from collections import OrderedDict
 try:
     import pandas as pd
 except ImportError:
@@ -166,8 +167,8 @@ class MT5OrderDataMapper:
                     dt_local = dt_broker.tz_convert(mt5_service.LOCAL_TZ)   # Convert to Australia/Sydney
                     
                     # Store both original and converted timestamps
-                    converted_data[f"{field}_local"] = dt_local
-                    converted_data[field] = dt_local.strftime('%d-%m-%Y %H:%M')
+                    # converted_data[f"{field}_local"] = dt_local
+                    converted_data[f"{field}_local"] = dt_local.strftime('%d-%m-%Y %H:%M')
                     
                 except Exception as e:
                     # Fallback if timezone conversion fails
@@ -191,7 +192,7 @@ class MT5OrderDataMapper:
         result = {
             'sl_from_comment': None,
             'tp_from_comment': None,
-            'comment_processed': comment if comment else "MC"
+            'comment_processed': comment if comment else ""
         }
         
         if not comment or comment == "None":
@@ -333,6 +334,11 @@ class MT5OrderDataMapper:
         """
         if not orders_list:
             return []
+
+        try :
+            import MetaTrader5 as mt5
+        except ImportError:
+            raise ImportError("MetaTrader5 module is required for create_position_summaries method.")
         
         # Group orders by position_id
         position_groups = {}
@@ -358,6 +364,8 @@ class MT5OrderDataMapper:
             # Determine position type from entry order
             position_type = entry_order.get('direction', 'UNKNOWN')
             symbol = entry_order.get('symbol', 'UNKNOWN')
+
+            tick = mt5.symbol_info(symbol)
             
             # Get prices
             entry_price = entry_order.get('price_open', 0)
@@ -383,33 +391,28 @@ class MT5OrderDataMapper:
             profit_loss = price_diff * volume
             
             # Get timestamps
-            entry_time = entry_order.get('time_setup_formatted', entry_order.get('time_setup', 'Unknown'))
-            exit_time = exit_order.get('time_done_formatted', exit_order.get('time_done', 'Unknown'))
+            entry_time = entry_order.get('time_setup_local', entry_order.get('time_setup', 'Unknown'))
+            exit_time = exit_order.get('time_done_local', exit_order.get('time_done', 'Unknown'))
             
             # Determine if position was profitable
             is_profitable = profit_loss > 0
-            
-            position_summary = {
-                'position_id': position_id,
-                'symbol': symbol,
-                'position_type': position_type,
-                'volume': volume,
-                'entry_time': entry_time,
-                'exit_time': exit_time,
-                'entry_price': entry_price,
-                'exit_price': exit_price,
-                'price_difference': price_diff,
-                'profit_loss': round(profit_loss, 2),
-                'is_profitable': is_profitable,
-                'duration_orders': len(orders),
-                'entry_order_ticket': entry_order.get('ticket'),
-                'exit_order_ticket': exit_order.get('ticket'),
-                'entry_reason': entry_order.get('reason_text', 'UNKNOWN'),
-                'exit_reason': exit_order.get('reason_text', 'UNKNOWN'),
-                'exit_comment': exit_order.get('comment', ''),
-                'orders': orders_sorted  # Include all orders for detailed analysis
-            }
-            
+
+            position_summary = OrderedDict([
+                ('symbol', symbol),
+                ('position_type', position_type),
+                ('volume', volume),
+                ('entry_time', entry_time),
+                ('exit_time', exit_time),
+                ('entry_price', entry_price),
+                ('exit_price', exit_price),
+                ('profit_loss', round(profit_loss, 2) * (volume / tick.point)),
+                ('is_profitable', is_profitable),
+                ('entry_reason', entry_order.get('reason_text', 'UNKNOWN')),
+                ('exit_reason', exit_order.get('reason_text', 'UNKNOWN')),
+                ('exit_comment',
+                 "MC" if entry_order.get('reason_text', 'UNKNOWN') == "CLIENT" else exit_order.get('comment')),
+            ])
+
             position_summaries.append(position_summary)
         
         # Sort by entry time
