@@ -167,7 +167,7 @@ class MT5OrderDataMapper:
                     
                     # Store both original and converted timestamps
                     converted_data[f"{field}_local"] = dt_local
-                    converted_data[f"{field}_formatted"] = dt_local.strftime("%Y-%m-%d %H:%M:%S %Z")
+                    converted_data[field] = dt_local.strftime('%d-%m-%Y %H:%M')
                     
                 except Exception as e:
                     # Fallback if timezone conversion fails

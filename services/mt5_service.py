@@ -21,7 +21,7 @@ class MT5Service:
         self.connection_info = None
         # Initialize timezone handling
         self.LOCAL_TZ = pytz.timezone("Australia/Sydney")
-        self.BROKER_TZ = pytz.FixedOffset(self.get_broker_offset())
+        self.BROKER_TZ = pytz.FixedOffset(self.get_broker_offset() if self.get_broker_offset() >= 0 else 180)
     
     def initialize_connection(self) -> Dict[str, Any]:
         """Initialize connection to MetaTrader 5 terminal"""
@@ -133,6 +133,7 @@ class MT5Service:
 
             # Offset in minutes (broker time - UTC time)
             time_diff_ = (server_time - utc_now).total_seconds() / 60
+            logger.info(f"Broker UTC offset in minutes: {time_diff_}")
             return time_diff_
         except Exception as e:
             logger.warning(f"Error getting broker offset: {str(e)}")
