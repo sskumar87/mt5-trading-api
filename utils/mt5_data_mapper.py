@@ -401,7 +401,6 @@ class MT5OrderDataMapper:
             is_profitable = profit_loss > 0
 
             position_summary = OrderedDict([
-                ('position_id', position_id),
                 ('symbol', symbol),
                 ('position_type', position_type),
                 ('volume', volume),
@@ -409,16 +408,12 @@ class MT5OrderDataMapper:
                 ('exit_time', exit_time),
                 ('entry_price', entry_price),
                 ('exit_price', exit_price),
-                ('price_difference', price_diff),
-                ('profit_loss', round(profit_loss, 2)),
+                ('profit_loss', round(profit_loss, 2) * (volume / tick.point)),
                 ('is_profitable', is_profitable),
-                ('duration_orders', len(orders)),
-                ('entry_order_ticket', entry_order.get('ticket')),
-                ('exit_order_ticket', exit_order.get('ticket')),
                 ('entry_reason', entry_order.get('reason_text', 'UNKNOWN')),
                 ('exit_reason', exit_order.get('reason_text', 'UNKNOWN')),
-                ('exit_comment', exit_order.get('comment', '')),
-                ('orders', orders_sorted)  # Include all orders for detailed analysis
+                ('exit_comment',
+                 "MC" if entry_order.get('reason_text', 'UNKNOWN') == "CLIENT" else exit_order.get('comment')),
             ])
 
             position_summaries.append(position_summary)
