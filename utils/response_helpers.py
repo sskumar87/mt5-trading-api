@@ -1,4 +1,5 @@
 from typing import Dict, Any, List, Optional
+from collections import OrderedDict
 from flask import jsonify
 
 def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -> Dict[str, Any]:
@@ -21,7 +22,7 @@ def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -
 
 def create_success_response(data: Any = None, message: Optional[str] = None, **kwargs) -> Dict[str, Any]:
     """Create a standardized success response"""
-    response = {"success": True}
+    response = OrderedDict([("success", True)])
     
     if data is not None:
         response["data"] = data
@@ -36,10 +37,10 @@ def create_success_response(data: Any = None, message: Optional[str] = None, **k
 
 def create_error_response(error: str, code: Optional[str] = None, **kwargs) -> Dict[str, Any]:
     """Create a standardized error response"""
-    response = {
-        "success": False,
-        "error": error
-    }
+    response = OrderedDict([
+        ("success", False),
+        ("error", error)
+    ])
     
     if code:
         response["code"] = code
@@ -72,18 +73,18 @@ def create_paginated_response(data: List[Any], page: int = 1, per_page: int = 10
 
 def format_position_data(position: Dict[str, Any]) -> Dict[str, Any]:
     """Format position data for API response"""
-    return {
-        "ticket": position.get("ticket"),
-        "symbol": position.get("symbol"),
-        "type": position.get("type"),
-        "volume": round(position.get("volume", 0), 2),
-        "price_open": round(position.get("price_open", 0), 5),
-        "price_current": round(position.get("price_current", 0), 5),
-        "profit": round(position.get("profit", 0), 2),
-        "swap": round(position.get("swap", 0), 2),
-        "time": position.get("time"),
-        "comment": position.get("comment", "")
-    }
+    return OrderedDict([
+        ("ticket", position.get("ticket")),
+        ("symbol", position.get("symbol")),
+        ("type", position.get("type")),
+        ("volume", round(position.get("volume", 0), 2)),
+        ("price_open", round(position.get("price_open", 0), 5)),
+        ("price_current", round(position.get("price_current", 0), 5)),
+        ("profit", round(position.get("profit", 0), 2)),
+        ("swap", round(position.get("swap", 0), 2)),
+        ("time", position.get("time")),
+        ("comment", position.get("comment", ""))
+    ])
 
 def format_order_data(order: Dict[str, Any]) -> Dict[str, Any]:
     """Format order data for API response"""

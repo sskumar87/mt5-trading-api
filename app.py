@@ -37,6 +37,8 @@ def create_app():
     # Configuration
     app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
     app.config.from_object('config.Config')
+    # Preserve key order in JSON responses
+    app.config['JSON_SORT_KEYS'] = False
     
     # Middleware
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)

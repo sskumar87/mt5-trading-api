@@ -244,46 +244,49 @@ class MT5OrderDataMapper:
         # Extract SL/TP from comment field
         comment_data = cls.extract_sl_tp_from_comment(order_data.get('comment', ''))
         
-        # Add mapped fields
-        mapped_order.update({
+        # Create ordered dictionary to preserve field order
+        ordered_fields = OrderedDict([
             # Order identification and timing (timezone-aware timestamps already added by convert_order_timestamps)
-            'ticket_str': str(order_data.get('ticket', 'N/A')),
+            ('ticket_str', str(order_data.get('ticket', 'N/A'))),
             
             # Order type and characteristics
-            'type_text': cls.map_order_type(order_data.get('type', -1)),
-            'state_text': cls.map_order_state(order_data.get('state', -1)),
-            'reason_text': cls.map_order_reason(order_data.get('reason', -1)),
-            'time_type_text': cls.map_time_type(order_data.get('type_time', -1)),
-            'filling_type_text': cls.map_filling_type(order_data.get('type_filling', -1)),
+            ('type_text', cls.map_order_type(order_data.get('type', -1))),
+            ('state_text', cls.map_order_state(order_data.get('state', -1))),
+            ('reason_text', cls.map_order_reason(order_data.get('reason', -1))),
+            ('time_type_text', cls.map_time_type(order_data.get('type_time', -1))),
+            ('filling_type_text', cls.map_filling_type(order_data.get('type_filling', -1))),
             
             # Volume and pricing information
-            'volume_executed': order_data.get('volume_initial', 0) - order_data.get('volume_current', 0),
-            'is_fully_executed': order_data.get('volume_current', 0) == 0 and order_data.get('volume_initial', 0) > 0,
-            'execution_percentage': (
+            ('volume_executed', order_data.get('volume_initial', 0) - order_data.get('volume_current', 0)),
+            ('is_fully_executed', order_data.get('volume_current', 0) == 0 and order_data.get('volume_initial', 0) > 0),
+            ('execution_percentage', (
                 ((order_data.get('volume_initial', 0) - order_data.get('volume_current', 0)) / order_data.get('volume_initial', 1)) * 100
                 if order_data.get('volume_initial', 0) > 0 else 0
-            ),
+            )),
             
             # Order direction
-            'direction': 'BUY' if order_data.get('type', -1) in [0, 2, 4, 6] else 'SELL',
-            'is_pending': order_data.get('type', -1) in [2, 3, 4, 5, 6, 7],
-            'is_market_order': order_data.get('type', -1) in [0, 1],
+            ('direction', 'BUY' if order_data.get('type', -1) in [0, 2, 4, 6] else 'SELL'),
+            ('is_pending', order_data.get('type', -1) in [2, 3, 4, 5, 6, 7]),
+            ('is_market_order', order_data.get('type', -1) in [0, 1]),
             
             # Status flags
-            'has_stop_loss': order_data.get('sl', 0) > 0,
-            'has_take_profit': order_data.get('tp', 0) > 0,
-            'has_expiration': order_data.get('time_expiration', 0) > 0,
+            ('has_stop_loss', order_data.get('sl', 0) > 0),
+            ('has_take_profit', order_data.get('tp', 0) > 0),
+            ('has_expiration', order_data.get('time_expiration', 0) > 0),
             
             # Order source summary
-            'order_source_summary': f"{cls.map_order_reason(order_data.get('reason', -1))} - {cls.map_order_type(order_data.get('type', -1))} - {cls.map_order_state(order_data.get('state', -1))}",
+            ('order_source_summary', f"{cls.map_order_reason(order_data.get('reason', -1))} - {cls.map_order_type(order_data.get('type', -1))} - {cls.map_order_state(order_data.get('state', -1))}"),
             
             # Comment processing and SL/TP extraction
-            'comment_processed': comment_data['comment_processed'],
-            'sl_from_comment': comment_data['sl_from_comment'],
-            'tp_from_comment': comment_data['tp_from_comment'],
-            'sl_effective': comment_data['sl_from_comment'] if comment_data['sl_from_comment'] is not None else order_data.get('sl', 0),
-            'tp_effective': comment_data['tp_from_comment'] if comment_data['tp_from_comment'] is not None else order_data.get('tp', 0)
-        })
+            ('comment_processed', comment_data['comment_processed']),
+            ('sl_from_comment', comment_data['sl_from_comment']),
+            ('tp_from_comment', comment_data['tp_from_comment']),
+            ('sl_effective', comment_data['sl_from_comment'] if comment_data['sl_from_comment'] is not None else order_data.get('sl', 0)),
+            ('tp_effective', comment_data['tp_from_comment'] if comment_data['tp_from_comment'] is not None else order_data.get('tp', 0))
+        ])
+        
+        # Merge with mapped_order to preserve order
+        mapped_order.update(ordered_fields)
         
         return mapped_order
     
@@ -398,6 +401,7 @@ class MT5OrderDataMapper:
             is_profitable = profit_loss > 0
 
             position_summary = OrderedDict([
+                ('position_id', position_id),
                 ('symbol', symbol),
                 ('position_type', position_type),
                 ('volume', volume),
@@ -405,12 +409,16 @@ class MT5OrderDataMapper:
                 ('exit_time', exit_time),
                 ('entry_price', entry_price),
                 ('exit_price', exit_price),
-                ('profit_loss', round(profit_loss, 2) * (volume / tick.point)),
+                ('price_difference', price_diff),
+                ('profit_loss', round(profit_loss, 2)),
                 ('is_profitable', is_profitable),
+                ('duration_orders', len(orders)),
+                ('entry_order_ticket', entry_order.get('ticket')),
+                ('exit_order_ticket', exit_order.get('ticket')),
                 ('entry_reason', entry_order.get('reason_text', 'UNKNOWN')),
                 ('exit_reason', exit_order.get('reason_text', 'UNKNOWN')),
-                ('exit_comment',
-                 "MC" if entry_order.get('reason_text', 'UNKNOWN') == "CLIENT" else exit_order.get('comment')),
+                ('exit_comment', exit_order.get('comment', '')),
+                ('orders', orders_sorted)  # Include all orders for detailed analysis
             ])
 
             position_summaries.append(position_summary)
