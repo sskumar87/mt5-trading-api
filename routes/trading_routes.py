@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 from services.trading_service import trading_service
+from services.order import map_fill, map_time, place_order
 from services.mt5_service import mt5_service
 from utils.response_helpers import validate_required_fields
 
@@ -14,7 +15,9 @@ def send_order():
     """Send a trading order"""
     try:
         req = request.get_json()
-        result = trading_service.place_order(
+        type_filling = map_fill(req['type_filling'])
+        type_time = map_time(req['type_time'])
+        result = place_order(
             symbol=req.get('symbol'),
             side=req.get('side'),
             volume=req.get('volume'),
@@ -29,13 +32,13 @@ def send_order():
             magic=req.get('magic'),
             comment=req.get('comment'),
             do_order_check=req.get('do_order_check'),
-            type_filling=req.get('type_filling'),
-            type_time=req.get('type_time'),
+            type_filling=type_filling,
+            type_time=type_time,
             expiration=req.get('expiration'),
         )
 
         return jsonify(result), 200 if result.ok else 400
-        
+
     except ValueError as e:
         return jsonify({"success": False, "error": f"Invalid numeric value: {str(e)}"}), 400
     except Exception as e:

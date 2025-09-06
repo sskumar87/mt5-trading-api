@@ -114,10 +114,12 @@ class MT5Service:
         except Exception as e:
             logger.error(f"Error getting terminal info: {str(e)}")
             return {"success": False, "error": str(e)}
-    
+
     def get_broker_offset(self, symbol: str = "XAUUSD") -> float:
         """Fetch broker's UTC offset in minutes using tick time."""
         try:
+            if not self.check_connection():
+                self.initialize_connection()
             tick = mt5.symbol_info_tick(symbol)
             if tick is None:
                 logger.info(f"Failed to fetch tick for {symbol}")
@@ -130,7 +132,8 @@ class MT5Service:
             logger.info(f"Server time {server_time} local time {local_time}")
 
             # Offset in minutes (broker time - UTC time)
-            return (server_time - utc_now).total_seconds() / 60
+            time_diff_ = (server_time - utc_now).total_seconds() / 60
+            return time_diff_
         except Exception as e:
             logger.warning(f"Error getting broker offset: {str(e)}")
             return 0.0  # fallback to UTC

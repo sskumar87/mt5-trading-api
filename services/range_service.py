@@ -15,16 +15,6 @@ try:
 except ImportError:
     import services.mock_mt5 as mt5
 
-# Timezone setup (copied from old_app logic)
-try:
-    from zoneinfo import ZoneInfo  # Python 3.9+
-    LOCAL_TZ = ZoneInfo("Australia/Sydney")
-    BROKER_TZ = ZoneInfo("Etc/GMT-3")  # Broker UTC+3 -> reverse sign for Etc/GMT zones
-except Exception:
-    import pytz
-    LOCAL_TZ = pytz.timezone("Australia/Sydney")
-    BROKER_TZ = pytz.FixedOffset(180)  # UTC+3 offset in minutes
-
 logger = logging.getLogger(__name__)
 
 class RangeService:
@@ -79,11 +69,11 @@ class RangeService:
             if df.empty:
                 logger.error("Empty rates DataFrame.")
                 return None
-            
+            logger.info(f"local timezone {mt5_service.LOCAL_TZ} broker timezone {mt5_service.BROKER_TZ}")
             # --- Convert broker timestamps (UTC+3) → Australia/Sydney (DST-aware) ---
             df["time"] = pd.to_datetime(df["time"], unit="s")
-            df["time"] = df["time"].dt.tz_localize(BROKER_TZ)  # Localize MT5 broker time
-            df["time"] = df["time"].dt.tz_convert(LOCAL_TZ)    # Convert to Australia/Sydney
+            df["time"] = df["time"].dt.tz_localize(mt5_service.BROKER_TZ)  # Localize MT5 broker time
+            df["time"] = df["time"].dt.tz_convert(mt5_service.LOCAL_TZ)    # Convert to Australia/Sydney
             
             # --- Check if crypto symbol → skip trading window filter ---
             crypto_symbols = ["BTCUSD", "ETHUSD"]

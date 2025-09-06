@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime, timezone, time
 import pandas as pd
 import MetaTrader5 as mt5
 import tzlocal
 from typing import Optional
+import pytz
 
+logger = logging.getLogger(__name__)
 
 def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     """Calculate the Relative Strength Index (RSI)."""
@@ -31,6 +34,9 @@ def get_broker_offset(symbol: str = "EURUSD") -> float:
     # Broker server time from tick (UTC aware)
     server_time = datetime.fromtimestamp(tick.time, tz=timezone.utc)
     utc_now = datetime.now(timezone.utc)
+    local_time = datetime.now()
+    logger.info(f"Server time {server_time} local time {local_time}")
+
 
     # Offset in hours (broker time - UTC time)
     return (server_time - utc_now).total_seconds() / 60
@@ -39,9 +45,8 @@ def get_broker_offset(symbol: str = "EURUSD") -> float:
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
     LOCAL_TZ = ZoneInfo("Australia/Sydney")
-    BROKER_TZ = ZoneInfo("Etc/GMT-3")  # Broker UTC+3 -> reverse sign for Etc/GMT zones
+    BROKER_TZ = pytz.FixedOffset(get_broker_offset())  # Broker UTC+3 -> reverse sign for Etc/GMT zones
 except Exception:
-    import pytz
     LOCAL_TZ = pytz.timezone("Australia/Sydney")
     BROKER_TZ = pytz.FixedOffset(get_broker_offset())  # UTC+3 offset in minutes
 
