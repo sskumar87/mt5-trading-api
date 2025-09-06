@@ -39,6 +39,7 @@ def create_app():
     app.config.from_object('config.Config')
     # Preserve key order in JSON responses
     app.config['JSON_SORT_KEYS'] = False
+    app.json.sort_keys = False
     
     # Middleware
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
