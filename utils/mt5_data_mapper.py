@@ -267,6 +267,103 @@ class MT5OrderDataMapper:
         setup_time = cls.format_timestamp(order_data.get('time_setup', 0))
         
         return f"Order #{ticket}: {order_type} {volume} lots of {symbol} - Status: {state} (Created: {setup_time})"
+    
+    @classmethod
+    def create_position_summaries(cls, orders_list: list) -> list:
+        """
+        Create position summaries by grouping orders with the same position_id
+        
+        Args:
+            orders_list: List of mapped order objects
+            
+        Returns:
+            List of position summary dictionaries
+        """
+        if not orders_list:
+            return []
+        
+        # Group orders by position_id
+        position_groups = {}
+        for order in orders_list:
+            position_id = order.get('position_id')
+            if position_id and position_id != 0:  # Only process orders with valid position_ids
+                if position_id not in position_groups:
+                    position_groups[position_id] = []
+                position_groups[position_id].append(order)
+        
+        position_summaries = []
+        
+        for position_id, orders in position_groups.items():
+            if len(orders) < 2:  # Skip positions with only one order
+                continue
+                
+            # Sort orders by time_setup to get chronological order
+            orders_sorted = sorted(orders, key=lambda x: x.get('time_setup', 0))
+            
+            entry_order = orders_sorted[0]
+            exit_order = orders_sorted[-1]
+            
+            # Determine position type from entry order
+            position_type = entry_order.get('direction', 'UNKNOWN')
+            symbol = entry_order.get('symbol', 'UNKNOWN')
+            
+            # Get prices
+            entry_price = entry_order.get('price_open', 0)
+            if entry_price == 0:  # If price_open is 0, use price_current
+                entry_price = entry_order.get('price_current', 0)
+            
+            exit_price = exit_order.get('price_open', 0)
+            if exit_price == 0:  # If price_open is 0, use price_current
+                exit_price = exit_order.get('price_current', 0)
+            
+            # Calculate volume (should be the same for both orders in a complete position)
+            volume = entry_order.get('volume_initial', 0)
+            
+            # Calculate profit/loss
+            if position_type == "SELL":
+                # For SELL positions: profit when price goes down (entry_price > exit_price)
+                price_diff = entry_price - exit_price
+            else:  # BUY
+                # For BUY positions: profit when price goes up (exit_price > entry_price)
+                price_diff = exit_price - entry_price
+            
+            # Calculate profit/loss (basic calculation - could be enhanced with contract sizes)
+            profit_loss = price_diff * volume
+            
+            # Get timestamps
+            entry_time = entry_order.get('time_setup_formatted', entry_order.get('time_setup', 'Unknown'))
+            exit_time = exit_order.get('time_done_formatted', exit_order.get('time_done', 'Unknown'))
+            
+            # Determine if position was profitable
+            is_profitable = profit_loss > 0
+            
+            position_summary = {
+                'position_id': position_id,
+                'symbol': symbol,
+                'position_type': position_type,
+                'volume': volume,
+                'entry_time': entry_time,
+                'exit_time': exit_time,
+                'entry_price': entry_price,
+                'exit_price': exit_price,
+                'price_difference': price_diff,
+                'profit_loss': round(profit_loss, 2),
+                'is_profitable': is_profitable,
+                'duration_orders': len(orders),
+                'entry_order_ticket': entry_order.get('ticket'),
+                'exit_order_ticket': exit_order.get('ticket'),
+                'entry_reason': entry_order.get('reason_text', 'UNKNOWN'),
+                'exit_reason': exit_order.get('reason_text', 'UNKNOWN'),
+                'exit_comment': exit_order.get('comment', ''),
+                'orders': orders_sorted  # Include all orders for detailed analysis
+            }
+            
+            position_summaries.append(position_summary)
+        
+        # Sort by entry time
+        position_summaries.sort(key=lambda x: x.get('entry_time', ''))
+        
+        return position_summaries
 
 
 # Create global instance for easy access
@@ -296,3 +393,7 @@ def map_orders_list(orders_list: list) -> list:
 def get_order_summary(order_data: Dict[str, Any]) -> str:
     """Generate order summary"""
     return mt5_mapper.get_order_summary(order_data)
+
+def create_position_summaries(orders_list: list) -> list:
+    """Create position summaries from orders list"""
+    return mt5_mapper.create_position_summaries(orders_list)

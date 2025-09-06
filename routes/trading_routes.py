@@ -386,3 +386,100 @@ def get_orders_summary():
     except Exception as e:
         logger.error(f"Error in orders summary endpoint: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@trading_bp.route('/history/positions', methods=['GET'])
+def get_position_summaries():
+    """
+    Get position summaries by grouping orders with same position_id
+    
+    Query Parameters:
+    - from_date: Start date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+    - to_date: End date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+    - symbol: Symbol filter (optional)
+    """
+    try:
+        # Parse query parameters (same as historical orders)
+        from_date_str = request.args.get('from_date')
+        to_date_str = request.args.get('to_date')
+        symbol = request.args.get('symbol')
+        
+        # Parse dates if provided
+        from_date = None
+        to_date = None
+        
+        if from_date_str:
+            try:
+                if len(from_date_str) == 10:  # YYYY-MM-DD
+                    from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+                else:  # YYYY-MM-DD HH:MM:SS
+                    from_date = datetime.strptime(from_date_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return jsonify({
+                    "success": False, 
+                    "error": "Invalid from_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                }), 400
+        
+        if to_date_str:
+            try:
+                if len(to_date_str) == 10:  # YYYY-MM-DD
+                    to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+                else:  # YYYY-MM-DD HH:MM:SS
+                    to_date = datetime.strptime(to_date_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return jsonify({
+                    "success": False, 
+                    "error": "Invalid to_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                }), 400
+        
+        # Get historical orders with mapping
+        orders_result = mt5_service.get_historical_orders(
+            from_date=from_date,
+            to_date=to_date,
+            symbol=symbol,
+            map_data=True
+        )
+        
+        if not orders_result["success"]:
+            return jsonify(orders_result), 400
+        
+        orders = orders_result["data"]["orders"]
+        
+        # Create position summaries
+        from utils.mt5_data_mapper import create_position_summaries
+        position_summaries = create_position_summaries(orders)
+        
+        # Calculate summary statistics
+        total_positions = len(position_summaries)
+        profitable_positions = len([p for p in position_summaries if p['is_profitable']])
+        loss_positions = total_positions - profitable_positions
+        
+        total_profit_loss = sum(p['profit_loss'] for p in position_summaries)
+        
+        # Calculate win rate
+        win_rate = (profitable_positions / total_positions * 100) if total_positions > 0 else 0
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "positions": position_summaries,
+                "summary": {
+                    "total_positions": total_positions,
+                    "profitable_positions": profitable_positions,
+                    "loss_positions": loss_positions,
+                    "win_rate": round(win_rate, 2),
+                    "total_profit_loss": round(total_profit_loss, 2),
+                    "average_profit_loss": round(total_profit_loss / total_positions, 2) if total_positions > 0 else 0
+                },
+                "period": {
+                    "from_date": orders_result["data"]["from_date"],
+                    "to_date": orders_result["data"]["to_date"],
+                    "symbol_filter": symbol,
+                    "total_orders_processed": len(orders)
+                }
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in position summaries endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500

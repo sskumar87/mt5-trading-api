@@ -6,14 +6,17 @@ The system serves as middleware between web clients and the MT5 platform, handli
 
 # Recent Changes
 
-## 2025-09-05: MT5 Historical Orders Data Mapper
+## 2025-09-05: MT5 Historical Orders Data Mapper & Position Analysis
 - **Data Mapper Implementation**: Created comprehensive `MT5OrderDataMapper` class to convert numeric codes from MT5 historical orders to meaningful text
 - **Complete Field Mapping**: Maps order types, states, reasons, time types, and filling types with human-readable descriptions
-- **Enhanced Order Data**: Adds calculated fields like execution percentage, direction, market/pending flags, and comprehensive timestamps
+- **Timezone Conversion**: Integrated same timezone logic as ranges service using `pd.to_datetime`, `tz_localize`, and `tz_convert` for Australia/Sydney time
+- **Enhanced Order Data**: Adds calculated fields like execution percentage, direction, market/pending flags, and timezone-aware timestamps
+- **Position Summaries**: Created position grouping by `position_id` with entry/exit analysis, profit/loss calculations, and comprehensive position metrics
 - **Historical Orders API**: Added `/api/trading/history/orders` endpoint for retrieving and mapping historical order data
 - **Orders Summary API**: Added `/api/trading/history/orders/summary` endpoint for statistical analysis of order history
+- **Position Analysis API**: Added `/api/trading/history/positions` endpoint for position-based profit/loss analysis and trading performance metrics
 - **Flexible Date Filtering**: Support for date range filtering and symbol-specific queries with optional data mapping
-- **Order Analysis**: Automatic calculation of execution rates, order type breakdowns, and trading pattern analysis
+- **Trading Analytics**: Automatic calculation of execution rates, win rates, profit/loss analysis, and comprehensive trading pattern analysis
 
 ## 2025-09-02: Timezone Handling Enhancement
 - **Timezone Support**: Added Australia/Sydney local timezone and broker timezone handling to MT5 service
