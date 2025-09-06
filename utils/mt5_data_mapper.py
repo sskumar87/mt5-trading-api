@@ -176,6 +176,48 @@ class MT5OrderDataMapper:
         return converted_data
     
     @classmethod
+    def extract_sl_tp_from_comment(cls, comment: str) -> Dict[str, Any]:
+        """
+        Extract SL/TP values from comment field like '[tp 3471.04]' '[sl 3478.04]'
+        
+        Args:
+            comment: Comment string from order
+            
+        Returns:
+            Dict with extracted sl, tp values and processed comment
+        """
+        import re
+        
+        result = {
+            'sl_from_comment': None,
+            'tp_from_comment': None,
+            'comment_processed': comment if comment else "MC"
+        }
+        
+        if not comment or comment == "None":
+            return result
+        
+        # Extract TP values - look for [tp value] or [TP value]
+        tp_pattern = r'\[tp\s+([\d.]+)\]'
+        tp_match = re.search(tp_pattern, comment, re.IGNORECASE)
+        if tp_match:
+            try:
+                result['tp_from_comment'] = float(tp_match.group(1))
+            except ValueError:
+                pass
+        
+        # Extract SL values - look for [sl value] or [SL value]  
+        sl_pattern = r'\[sl\s+([\d.]+)\]'
+        sl_match = re.search(sl_pattern, comment, re.IGNORECASE)
+        if sl_match:
+            try:
+                result['sl_from_comment'] = float(sl_match.group(1))
+            except ValueError:
+                pass
+        
+        return result
+
+    @classmethod
     def map_order_complete(cls, order_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Complete mapping of order data with all numeric codes converted to text
@@ -197,6 +239,9 @@ class MT5OrderDataMapper:
         
         # First apply timezone conversion to all timestamps
         mapped_order = cls.convert_order_timestamps(order_data)
+        
+        # Extract SL/TP from comment field
+        comment_data = cls.extract_sl_tp_from_comment(order_data.get('comment', ''))
         
         # Add mapped fields
         mapped_order.update({
@@ -229,7 +274,14 @@ class MT5OrderDataMapper:
             'has_expiration': order_data.get('time_expiration', 0) > 0,
             
             # Order source summary
-            'order_source_summary': f"{cls.map_order_reason(order_data.get('reason', -1))} - {cls.map_order_type(order_data.get('type', -1))} - {cls.map_order_state(order_data.get('state', -1))}"
+            'order_source_summary': f"{cls.map_order_reason(order_data.get('reason', -1))} - {cls.map_order_type(order_data.get('type', -1))} - {cls.map_order_state(order_data.get('state', -1))}",
+            
+            # Comment processing and SL/TP extraction
+            'comment_processed': comment_data['comment_processed'],
+            'sl_from_comment': comment_data['sl_from_comment'],
+            'tp_from_comment': comment_data['tp_from_comment'],
+            'sl_effective': comment_data['sl_from_comment'] if comment_data['sl_from_comment'] is not None else order_data.get('sl', 0),
+            'tp_effective': comment_data['tp_from_comment'] if comment_data['tp_from_comment'] is not None else order_data.get('tp', 0)
         })
         
         return mapped_order
