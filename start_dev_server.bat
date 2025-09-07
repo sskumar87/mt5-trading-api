@@ -32,6 +32,43 @@ echo Python version:
 python --version
 echo.
 
+REM Check if virtual environment exists, create if not
+if not exist "venv" (
+    echo Creating virtual environment...
+    python -m venv venv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to create virtual environment
+        pause
+        exit /b 1
+    )
+)
+
+REM Activate virtual environment
+echo Activating virtual environment...
+call venv\Scripts\activate.bat
+
+REM Check if Flask is installed
+python -c "import flask" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Flask not found. Installing dependencies...
+    pip install flask flask-cors flask-sqlalchemy gunicorn numpy pandas psycopg2-binary werkzeug email-validator
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to install dependencies
+        pause
+        exit /b 1
+    )
+)
+
+REM Check if requirements.txt exists and install from it
+if exist "requirements.txt" (
+    echo Installing from requirements.txt...
+    pip install -r requirements.txt
+)
+
+echo.
+echo Dependencies ready!
+echo.
+
 REM Start the Flask development server
 echo Starting Flask development server...
 echo Server will be available at: http://127.0.0.1:5001
