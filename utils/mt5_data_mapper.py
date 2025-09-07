@@ -401,6 +401,7 @@ class MT5OrderDataMapper:
             is_profitable = profit_loss > 0
 
             position_summary = OrderedDict([
+                ('position_id', position_id),
                 ('symbol', symbol),
                 ('position_type', position_type),
                 ('volume', volume),
@@ -418,8 +419,11 @@ class MT5OrderDataMapper:
 
             position_summaries.append(position_summary)
         
-        # Sort by entry time
-        position_summaries.sort(key=lambda x: x.get('entry_time', ''))
+        # # Sort by entry time
+        # position_summaries.sort(key=lambda x: x.get('entry_time', ''))
+
+        # Sort by exit time in descending order (most recent exits first)
+        position_summaries.sort(key=lambda x: x.get('exit_time', ''), reverse=True)
         
         return position_summaries
 
