@@ -15,6 +15,9 @@ dict_keys(['ticket', 'time_setup', 'time_setup_msc', 'time_done', 'time_done_msc
 from typing import Dict, Any, Optional
 from datetime import datetime
 from collections import OrderedDict
+
+from old_app.mt5.pip_value import pip_value_usd
+
 try:
     import pandas as pd
 except ImportError:
@@ -369,6 +372,7 @@ class MT5OrderDataMapper:
             symbol = entry_order.get('symbol', 'UNKNOWN')
 
             tick = mt5.symbol_info(symbol)
+            pip_value = pip_value_usd(tick)
             
             # Get prices
             entry_price = entry_order.get('price_open', 0)
@@ -391,7 +395,7 @@ class MT5OrderDataMapper:
                 price_diff = exit_price - entry_price
             
             # Calculate profit/loss (basic calculation - could be enhanced with contract sizes)
-            profit_loss = price_diff * volume
+            profit_loss = price_diff * volume * pip_value
             
             # Get timestamps
             entry_time = entry_order.get('time_setup_local', entry_order.get('time_setup', 'Unknown'))
@@ -409,7 +413,7 @@ class MT5OrderDataMapper:
                 ('exit_time', exit_time),
                 ('entry_price', entry_price),
                 ('exit_price', exit_price),
-                ('profit_loss', round(profit_loss, 2) * (volume / tick.point)),
+                ('profit_loss', round(profit_loss / tick.point, 2)),
                 ('is_profitable', is_profitable),
                 ('entry_reason', entry_order.get('reason_text', 'UNKNOWN')),
                 ('exit_reason', exit_order.get('reason_text', 'UNKNOWN')),

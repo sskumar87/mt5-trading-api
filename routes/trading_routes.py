@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 from services.trading_service import trading_service
+from services.order import map_fill, map_time, place_order
 from services.mt5_service import mt5_service
 from utils.response_helpers import validate_required_fields
 
@@ -14,22 +15,29 @@ def send_order():
     """Send a trading order"""
     try:
         req = request.get_json()
-        # Map request parameters to send_order method signature
-        action = req.get('side', '').upper()  # 'buy' -> 'BUY'
-        order_type = 'market' if req.get('kind') == 'market' else 'limit'
-        
-        result = trading_service.send_order(
-            action=action,
+        type_filling = map_fill(req['type_filling'])
+        type_time = map_time(req['type_time'])
+        result = place_order(
             symbol=req.get('symbol'),
+            side=req.get('side'),
             volume=req.get('volume'),
-            order_type=order_type,
+            kind=req.get('kind'),
             price=req.get('price'),
-            sl=req.get('sl_price'),
-            tp=req.get('tp_price'),
-            comment=req.get('comment', '')
+            stoplimit=req.get("stoplimit"),
+            deviation=req.get("deviation"),
+            sl_points=req.get('sl_points'),
+            tp_points=req.get('tp_points'),
+            sl_price=req.get('sl_price'),
+            tp_price=req.get('tp_price'),
+            magic=req.get('magic'),
+            comment=req.get('comment'),
+            do_order_check=req.get('do_order_check'),
+            type_filling=type_filling,
+            type_time=type_time,
+            expiration=req.get('expiration'),
         )
 
-        return jsonify(result), 200 if result["success"] else 400
+        return jsonify(result), 200 if result.ok else 400
 
     except ValueError as e:
         return jsonify({"success": False, "error": f"Invalid numeric value: {str(e)}"}), 400

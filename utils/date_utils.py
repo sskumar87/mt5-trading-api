@@ -47,7 +47,7 @@ class PeriodDateConverter:
         today_start = reference_date.replace(hour=0, minute=0, second=0, microsecond=0)
         
         if period == 'TODAY':
-            return today_start, reference_date
+            return today_start, reference_date  + timedelta(days=1)
         
         elif period == 'YESTERDAY':
             yesterday_start = today_start - timedelta(days=1)
