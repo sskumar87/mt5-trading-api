@@ -394,43 +394,62 @@ def get_position_summaries():
     Get position summaries by grouping orders with same position_id
     
     Query Parameters:
-    - from_date: Start date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
-    - to_date: End date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+    - period: Predefined period (TODAY, YESTERDAY, CURR_WEEK, LAST_WEEK, LAST_2_WEEKS, CURR_MONTH, LAST_MONTH)
+    - from_date: Start date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS) - ignored if period is provided
+    - to_date: End date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS) - ignored if period is provided
     - symbol: Symbol filter (optional)
+    
+    Examples:
+    /api/trading/history/positions?period=TODAY
+    /api/trading/history/positions?period=LAST_WEEK&symbol=XAUUSD
+    /api/trading/history/positions?from_date=2025-01-01&to_date=2025-01-31
     """
     try:
-        # Parse query parameters (same as historical orders)
+        # Parse query parameters
+        period = request.args.get('period')
         from_date_str = request.args.get('from_date')
         to_date_str = request.args.get('to_date')
         symbol = request.args.get('symbol')
         
-        # Parse dates if provided
+        # Handle period-based filtering
         from_date = None
         to_date = None
         
-        if from_date_str:
+        if period:
+            # Use period conversion
             try:
-                if len(from_date_str) == 10:  # YYYY-MM-DD
-                    from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
-                else:  # YYYY-MM-DD HH:MM:SS
-                    from_date = datetime.strptime(from_date_str, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
+                from utils.date_utils import convert_period_to_dates
+                from_date, to_date = convert_period_to_dates(period)
+            except ValueError as e:
                 return jsonify({
                     "success": False, 
-                    "error": "Invalid from_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                    "error": str(e)
                 }), 400
-        
-        if to_date_str:
-            try:
-                if len(to_date_str) == 10:  # YYYY-MM-DD
-                    to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
-                else:  # YYYY-MM-DD HH:MM:SS
-                    to_date = datetime.strptime(to_date_str, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                return jsonify({
-                    "success": False, 
-                    "error": "Invalid to_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
-                }), 400
+        else:
+            # Parse manual date inputs
+            if from_date_str:
+                try:
+                    if len(from_date_str) == 10:  # YYYY-MM-DD
+                        from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+                    else:  # YYYY-MM-DD HH:MM:SS
+                        from_date = datetime.strptime(from_date_str, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    return jsonify({
+                        "success": False, 
+                        "error": "Invalid from_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                    }), 400
+            
+            if to_date_str:
+                try:
+                    if len(to_date_str) == 10:  # YYYY-MM-DD
+                        to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+                    else:  # YYYY-MM-DD HH:MM:SS
+                        to_date = datetime.strptime(to_date_str, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    return jsonify({
+                        "success": False, 
+                        "error": "Invalid to_date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                    }), 400
         
         # Get historical orders with mapping
         orders_result = mt5_service.get_historical_orders(
@@ -459,6 +478,26 @@ def get_position_summaries():
         # Calculate win rate
         win_rate = (profitable_positions / total_positions * 100) if total_positions > 0 else 0
         
+        # Include period information in response
+        filter_info = {
+            "symbol": symbol,
+            "total_orders_processed": len(orders)
+        }
+        
+        if period:
+            from utils.date_utils import PeriodDateConverter
+            filter_info.update({
+                "period": period,
+                "period_description": PeriodDateConverter.get_period_description(period),
+                "calculated_from_date": from_date.strftime("%Y-%m-%d %H:%M:%S") if from_date else None,
+                "calculated_to_date": to_date.strftime("%Y-%m-%d %H:%M:%S") if to_date else None
+            })
+        else:
+            filter_info.update({
+                "from_date": orders_result["data"]["from_date"],
+                "to_date": orders_result["data"]["to_date"]
+            })
+
         return jsonify({
             "success": True,
             "data": {
@@ -471,12 +510,7 @@ def get_position_summaries():
                     "total_profit_loss": round(total_profit_loss, 2),
                     "average_profit_loss": round(total_profit_loss / total_positions, 2) if total_positions > 0 else 0
                 },
-                "period": {
-                    "from_date": orders_result["data"]["from_date"],
-                    "to_date": orders_result["data"]["to_date"],
-                    "symbol_filter": symbol,
-                    "total_orders_processed": len(orders)
-                }
+                "filter": filter_info
             }
         }), 200
         
