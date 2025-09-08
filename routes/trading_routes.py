@@ -14,24 +14,19 @@ def send_order():
     """Send a trading order"""
     try:
         req = request.get_json()
-        result = trading_service.place_order(
+        # Map request parameters to send_order method signature
+        action = req.get('side', '').upper()  # 'buy' -> 'BUY'
+        order_type = 'market' if req.get('kind') == 'market' else 'limit'
+        
+        result = trading_service.send_order(
+            action=action,
             symbol=req.get('symbol'),
-            side=req.get('side'),
             volume=req.get('volume'),
-            kind=req.get('kind'),
+            order_type=order_type,
             price=req.get('price'),
-            stoplimit=req.get("stoplimit"),
-            deviation=req.get("deviation"),
-            sl_points=req.get('sl_points'),
-            tp_points=req.get('tp_points'),
-            sl_price=req.get('sl_price'),
-            tp_price=req.get('tp_price'),
-            magic=req.get('magic'),
-            comment=req.get('comment'),
-            do_order_check=req.get('do_order_check'),
-            type_filling=req.get('type_filling'),
-            type_time=req.get('type_time'),
-            expiration=req.get('expiration'),
+            sl=req.get('sl_price'),
+            tp=req.get('tp_price'),
+            comment=req.get('comment', '')
         )
 
         return jsonify(result), 200 if result["success"] else 400
