@@ -58,7 +58,7 @@ class PeriodDateConverter:
             # Find the most recent Monday (or today if it's Monday)
             days_since_monday = reference_date.weekday()  # Monday=0, Sunday=6
             week_start = today_start - timedelta(days=days_since_monday)
-            return week_start, reference_date
+            return week_start, reference_date  + timedelta(days=1)
         
         elif period == 'LAST_WEEK':
             # Find Monday of last week
@@ -80,7 +80,7 @@ class PeriodDateConverter:
         elif period == 'CURR_MONTH':
             # From 1st of current month to now
             month_start = reference_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            return month_start, reference_date
+            return month_start, reference_date   + timedelta(days=1)
         
         elif period == 'LAST_MONTH':
             # From 1st of last month to last day of last month
