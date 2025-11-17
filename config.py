@@ -8,6 +8,7 @@ class Config:
     MT5_PASSWORD = os.environ.get('MT5_PASSWORD')
     MT5_SERVER = os.environ.get('MT5_SERVER')
     MT5_PATH = os.environ.get('MT5_PATH', 'C:\\Program Files\\MetaTrader 5\\terminal64.exe')
+    MT5_ACCOUNT_SIZE = os.environ.get('MT5_ACCOUNT_SIZE', '10000')
     
     # API Configuration
     API_RATE_LIMIT = os.environ.get('API_RATE_LIMIT', '100 per hour')

@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 import logging
 from services.mt5_service import mt5_service
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,14 @@ def connect():
 def get_account_info():
     """Get account information"""
     try:
+        account_size = float(Config().MT5_ACCOUNT_SIZE)
         result = mt5_service.get_account_info()
+        balance  = round(result.get("data", {}).get("equity", 0), 2) if result["success"] else 0
+        profit = round(balance - account_size, 2)
+        result["data"]["profit"] = profit if profit > 0 else 0
+        result["data"]["loss"] = profit if profit < 0 else 0
+        result["data"]["account_size"] = Config().MT5_ACCOUNT_SIZE
+        result["data"]["platform"] = Config().MT5_SERVER
         return jsonify(result), 200 if result["success"] else 400
     except Exception as e:
         logger.error(f"Error in account info endpoint: {str(e)}")

@@ -19,7 +19,7 @@ from utils.error_handlers import register_error_handlers
 
 # Import range service for scheduled tasks
 from services.range_service import range_service
-
+from config import Config
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -81,11 +81,18 @@ def create_app():
 
     @app.route('/api/fetch_symbol_map')
     def symbol_map():
-        """Health check endpoint"""
-        return {
-            "status": "healthy",
-            "service": "MT5 Trading API",
-            "data": {
+        platform = Config().MT5_SERVER
+        symbol_maps = {
+            'vantage': {
+                "XAUUSD": ["XAUUSD+", 1.5],
+                "BTCUSD": ["BTCUSD", 50],
+                "ETHUSD": ["ETHUSD", 5],
+                "NAS100": ["NAS100", 5],
+                "GBPUSD": ["GBPUSD+", 0.00030],
+                "EURUSD": ["EURUSD+", 0.00030],
+                "USDJPY": ["USDJPY+", 0.003]
+            },
+            'default': {
                 "XAUUSD": ["XAUUSD", 1.5],
                 "BTCUSD": ["BTCUSD", 50],
                 "ETHUSD": ["ETHUSD", 5],
@@ -94,6 +101,13 @@ def create_app():
                 "EURUSD": ["EURUSD", 0.00030],
                 "USDJPY": ["USDJPY", 0.003]
             }
+        }
+        data = symbol_maps['vantage'] if 'vantage' in platform.lower() else symbol_maps['default']
+        """Health check endpoint"""
+        return {
+            "status": "healthy",
+            "service": "MT5 Trading API",
+            "data": data
         }
 
 

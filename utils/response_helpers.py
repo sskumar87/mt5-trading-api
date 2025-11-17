@@ -50,14 +50,14 @@ def create_error_response(error: str, code: Optional[str] = None, **kwargs) -> D
     
     return response
 
-def create_paginated_response(data: List[Any], page: int = 1, per_page: int = 100, 
+def create_paginated_response(data: List[Any], page: int = 1, per_page: int = 100,
                             total: Optional[int] = None) -> Dict[str, Any]:
     """Create a paginated response"""
     if total is None:
         total = len(data)
-    
+
     total_pages = (total + per_page - 1) // per_page  # Ceiling division
-    
+
     return {
         "success": True,
         "data": data,
