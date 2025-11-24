@@ -35,3 +35,8 @@ class Config:
     SCHEDULER_SECONDS = int(os.environ.get('SCHEDULER_SECONDS', '30'))  # Seconds past the minute to run (0-59)
     SCHEDULER_TIMEFRAME = int(os.environ.get('SCHEDULER_TIMEFRAME', '5'))  # Data timeframe in minutes
     SCHEDULER_BARS = int(os.environ.get('SCHEDULER_BARS', '1500'))  # Number of bars to fetch
+
+    # Google OAuth Configuration
+    GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+    DISABLE_AUTH = os.environ.get('DISABLE_AUTH', 'False')
+    ALLOWED_EMAILS = os.environ.get('ALLOWED_EMAILS', '')

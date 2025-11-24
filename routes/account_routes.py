@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 import logging
 from services.mt5_service import mt5_service
 from config import Config
+from utils.auth import login_required
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ def connect():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @account_bp.route('/info', methods=['GET'])
+@login_required
 def get_account_info():
     """Get account information"""
     try:

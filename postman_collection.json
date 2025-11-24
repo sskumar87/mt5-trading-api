@@ -1,0 +1,218 @@
+{
+	"info": {
+		"_postman_id": "mt5-trading-api-collection",
+		"name": "MT5 Trading API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Trading",
+			"item": [
+				{
+					"name": "Get Positions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/trading/positions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "trading", "positions"]
+						}
+					}
+				},
+				{
+					"name": "Get Orders",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/trading/orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "trading", "orders"]
+						}
+					}
+				},
+				{
+					"name": "Buy Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"symbol\": \"XAUUSD\",\n    \"volume\": 0.01,\n    \"sl\": 2000.0,\n    \"tp\": 2050.0,\n    \"comment\": \"Test Buy\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/trading/buy",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "trading", "buy"]
+						}
+					}
+				},
+				{
+					"name": "Sell Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"symbol\": \"XAUUSD\",\n    \"volume\": 0.01,\n    \"sl\": 2050.0,\n    \"tp\": 2000.0,\n    \"comment\": \"Test Sell\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/trading/sell",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "trading", "sell"]
+						}
+					}
+				},
+				{
+					"name": "Calculate Margin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"symbol\": \"XAUUSD\",\n    \"volume\": 1.0,\n    \"leverage\": 100,\n    \"action\": \"BUY\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/trading/calculate-margin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "trading", "calculate-margin"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Account",
+			"item": [
+				{
+					"name": "Get Account Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/account/info",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "account", "info"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Market Data",
+			"item": [
+				{
+					"name": "Get Symbol Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/market/symbol?symbol=XAUUSD",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "market", "symbol"],
+							"query": [
+								{
+									"key": "symbol",
+									"value": "XAUUSD"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Ranges",
+			"item": [
+				{
+					"name": "Fetch Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ranges/fetch_data",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ranges", "fetch_data"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5001",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "your-api-key-here",
+			"type": "string"
+		}
+	]
+}

@@ -52,7 +52,7 @@ class RangeService:
             
             mt5_timeframe = timeframe_map.get(timeframe, mt5.TIMEFRAME_M5)
             
-            logger.info(f"Fetching rates for symbol with updated function: {symbol}")
+            logger.debug(f"Fetching rates for symbol with updated function: {symbol}")
             
             # Ensure symbol exists in Market Watch
             if not mt5.symbol_select(symbol, True):
@@ -69,7 +69,7 @@ class RangeService:
             if df.empty:
                 logger.error("Empty rates DataFrame.")
                 return None
-            logger.info(f"local timezone {mt5_service.LOCAL_TZ} broker timezone {mt5_service.BROKER_TZ}")
+            logger.debug(f"local timezone {mt5_service.LOCAL_TZ} broker timezone {mt5_service.BROKER_TZ}")
             # --- Convert broker timestamps (UTC+3) → Australia/Sydney (DST-aware) ---
             df["time"] = pd.to_datetime(df["time"], unit="s")
             df["time"] = df["time"].dt.tz_localize(mt5_service.BROKER_TZ)  # Localize MT5 broker time
@@ -99,7 +99,7 @@ class RangeService:
             # Format time column → day-month-year hour:minute
             df["time_formatted"] = df["time"].dt.strftime('%d-%m-%Y %H:%M')
             
-            logger.info(f"Fetched {len(df)} bars for {symbol} using old_app logic")
+            logger.debug(f"Fetched {len(df)} bars for {symbol} using old_app logic")
             return df
             
         except Exception as e:
@@ -319,7 +319,7 @@ class RangeService:
                 
                 # Cache for 5 minutes
                 if cache_age < timedelta(minutes=5):
-                    logger.info(f"Returning cached ranges for {symbol}")
+                    logger.debug(f"Returning cached ranges for {symbol}")
                     return {
                         "success": True,
                         "cached": True,
@@ -328,7 +328,7 @@ class RangeService:
                     }
             
             # Fetch fresh data
-            logger.info(f"Calculating ranges for {symbol} (tf={timeframe}, bars={bars})")
+            logger.debug(f"Calculating ranges for {symbol} (tf={timeframe}, bars={bars})")
             
             # Get market data
             df = self.mt5_fetch_rates(symbol, timeframe, bars)
@@ -379,7 +379,7 @@ class RangeService:
                 'data': result_data
             }
             
-            logger.info(f"Calculated {len(body_ranges)} body ranges, {len(merged_ranges)} merged ranges for {symbol}")
+            logger.debug(f"Calculated {len(body_ranges)} body ranges, {len(merged_ranges)} merged ranges for {symbol}")
             
             return {
                 "success": True,
@@ -404,7 +404,7 @@ class RangeService:
         """Sequential workflow: For each symbol -> mt5_fetch_rates -> ranges -> merge_ranges"""
         try:
             all_symbols = InstrumentConstants.get_all_symbols()
-            logger.info(f"Sequential processing for {len(all_symbols)} symbols: {all_symbols}")
+            logger.debug(f"Sequential processing for {len(all_symbols)} symbols: {all_symbols}")
             
             # Clear existing data in separate storage variables
             self.rates_data = {}
@@ -422,7 +422,7 @@ class RangeService:
                         
                     mt5_symbol = market_data_service.get_symbol_info_obj(symbol_key)['data'].name
 
-                    logger.info(f"Sequential processing: {symbol_key} -> {mt5_symbol}")
+                    logger.debug(f"Sequential processing: {symbol_key} -> {mt5_symbol}")
                     
                     # Step 1: Fetch rates using built-in mt5_fetch_rates method
                     rates_df = self.mt5_fetch_rates(mt5_symbol, timeframe, bars)
@@ -430,7 +430,7 @@ class RangeService:
                     if rates_df is not None and not rates_df.empty:
                         # Store rates data as DataFrame
                         self.rates_data[symbol_key] = rates_df
-                        logger.info(f"Step 1 - Fetched {len(rates_df)} rates for {symbol_key}")
+                        logger.debug(f"Step 1 - Fetched {len(rates_df)} rates for {symbol_key}")
                         
                         # Step 2: Calculate body ranges using old_app logic and store as DataFrame
                         try:
@@ -440,13 +440,13 @@ class RangeService:
                             
                             if not body_ranges_df.empty:
                                 self.calculated_ranges[symbol_key] = body_ranges_df
-                                logger.info(f"Step 2 - Calculated {len(body_ranges_df)} ranges for {symbol_key}")
+                                logger.debug(f"Step 2 - Calculated {len(body_ranges_df)} ranges for {symbol_key}")
                                 
                                 # Step 3: Merge ranges using old_app logic and store as DataFrame
                                 merged_ranges_df = self.merge_ranges(body_ranges_df)
                                 if not merged_ranges_df.empty:
                                     self.merged_ranges[symbol_key] = merged_ranges_df
-                                    logger.info(f"Step 3 - Merged to {len(merged_ranges_df)} ranges for {symbol_key}")
+                                    logger.debug(f"Step 3 - Merged to {len(merged_ranges_df)} ranges for {symbol_key}")
                                 else:
                                     logger.warning(f"No merged ranges for {symbol_key}")
                                     self.merged_ranges[symbol_key] = pd.DataFrame()
@@ -465,7 +465,7 @@ class RangeService:
                     logger.error(f"Error processing {symbol_key}: {str(e)}")
                     continue
             
-            logger.info(f"Sequential processing completed - Rates: {len(self.rates_data)}, Ranges: {len(self.calculated_ranges)}, Merged: {len(self.merged_ranges)}")
+            logger.debug(f"Sequential processing completed - Rates: {len(self.rates_data)}, Ranges: {len(self.calculated_ranges)}, Merged: {len(self.merged_ranges)}")
             return self.rates_data
             
         except Exception as e:
@@ -487,20 +487,20 @@ class RangeService:
             keys_to_remove = [k for k in self.cache.keys() if k.startswith(symbol)]
             for key in keys_to_remove:
                 del self.cache[key]
-            logger.info(f"Cleared cache for {symbol}")
+            logger.debug(f"Cleared cache for {symbol}")
         else:
             self.cache.clear()
-            logger.info("Cleared all cache")
+            logger.debug("Cleared all cache")
     
     def clear_symbol_data(self, symbol_key: Optional[str] = None):
         """Clear stored symbol data for specific symbol or all symbols"""
         if symbol_key:
             if symbol_key in self.symbol_data:
                 del self.symbol_data[symbol_key]
-                logger.info(f"Cleared stored data for {symbol_key}")
+                logger.debug(f"Cleared stored data for {symbol_key}")
         else:
             self.symbol_data.clear()
-            logger.info("Cleared all stored symbol data")
+            logger.debug("Cleared all stored symbol data")
     
     def get_calculated_ranges(self, symbol_key: Optional[str] = None) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
         """Get calculated ranges DataFrame for a specific symbol or all symbols"""
@@ -519,20 +519,20 @@ class RangeService:
         if symbol_key:
             if symbol_key in self.calculated_ranges:
                 del self.calculated_ranges[symbol_key]
-                logger.info(f"Cleared calculated ranges for {symbol_key}")
+                logger.debug(f"Cleared calculated ranges for {symbol_key}")
         else:
             self.calculated_ranges.clear()
-            logger.info("Cleared all calculated ranges")
+            logger.debug("Cleared all calculated ranges")
     
     def clear_merged_ranges(self, symbol_key: Optional[str] = None):
         """Clear merged ranges for specific symbol or all symbols"""
         if symbol_key:
             if symbol_key in self.merged_ranges:
                 del self.merged_ranges[symbol_key]
-                logger.info(f"Cleared merged ranges for {symbol_key}")
+                logger.debug(f"Cleared merged ranges for {symbol_key}")
         else:
             self.merged_ranges.clear()
-            logger.info("Cleared all merged ranges")
+            logger.debug("Cleared all merged ranges")
 
 # Global instance
 range_service = RangeService()

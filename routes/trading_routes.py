@@ -5,12 +5,14 @@ from services.trading_service import trading_service
 from services.order import map_fill, map_time, place_order
 from services.mt5_service import mt5_service
 from utils.response_helpers import validate_required_fields
+from utils.auth import login_required
 
 logger = logging.getLogger(__name__)
 
 trading_bp = Blueprint('trading', __name__)
 
 @trading_bp.route('/order', methods=['POST'])
+@login_required
 def send_order():
     """Send a trading order"""
     try:
@@ -37,7 +39,20 @@ def send_order():
             expiration=req.get('expiration'),
         )
 
-        return jsonify(result), 200 if result.ok else 400
+        # If order failed, return error with comment as the error message
+        if not result.ok:
+            error_message = result.comment if hasattr(result, 'comment') else "Order failed"
+            return jsonify({
+                "success": False,
+                "error": error_message,
+                "details": result.__dict__ if hasattr(result, '__dict__') else {}
+            }), 400
+        
+        # If order succeeded, return success response
+        return jsonify({
+            "success": True,
+            "data": result.__dict__ if hasattr(result, '__dict__') else {}
+        }), 200
 
     except ValueError as e:
         return jsonify({"success": False, "error": f"Invalid numeric value: {str(e)}"}), 400
@@ -46,6 +61,7 @@ def send_order():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @trading_bp.route('/positions', methods=['GET'])
+@login_required
 def get_positions():
     """Get all open positions"""
     try:
@@ -56,6 +72,7 @@ def get_positions():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @trading_bp.route('/positions/<int:ticket>', methods=['DELETE'])
+@login_required
 def close_position(ticket):
     """Close a specific position"""
     try:
@@ -66,6 +83,7 @@ def close_position(ticket):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @trading_bp.route('/orders', methods=['GET'])
+@login_required
 def get_orders():
     """Get all pending orders"""
     try:
@@ -76,6 +94,7 @@ def get_orders():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @trading_bp.route('/orders/<int:ticket>', methods=['DELETE'])
+@login_required
 def cancel_order(ticket):
     """Cancel a pending order"""
     try:
@@ -86,6 +105,7 @@ def cancel_order(ticket):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @trading_bp.route('/buy', methods=['POST'])
+@login_required
 def buy_order():
     """Simplified buy order endpoint"""
     try:
@@ -126,6 +146,7 @@ def buy_order():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @trading_bp.route('/sell', methods=['POST'])
+@login_required
 def sell_order():
     """Simplified sell order endpoint"""
     try:
@@ -208,6 +229,7 @@ def calculate_margin():
 
 
 @trading_bp.route('/history/orders', methods=['GET'])
+@login_required
 def get_historical_orders():
     """
     Get historical orders with mapped data
@@ -277,6 +299,7 @@ def get_historical_orders():
 
 
 @trading_bp.route('/history/orders/summary', methods=['GET'])
+@login_required
 def get_orders_summary():
     """
     Get a summary of historical orders with key statistics
@@ -392,6 +415,7 @@ def get_orders_summary():
 
 
 @trading_bp.route('/history/positions', methods=['GET'])
+@login_required
 def get_position_summaries():
     """
     Get position summaries by grouping orders with same position_id

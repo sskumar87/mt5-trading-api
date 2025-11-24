@@ -13,3 +13,4 @@ urllib3
 APScheduler
 requests
 pytz
+google-auth

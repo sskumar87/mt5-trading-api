@@ -22,7 +22,7 @@ from services.range_service import range_service
 from config import Config
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('mt5_api.log'),
@@ -46,6 +46,15 @@ def create_app():
     
     # Enable CORS for frontend integration
     CORS(app, origins=["*"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    
+    # Log important configuration at startup
+    logger = logging.getLogger(__name__)
+    logger.info("=" * 50)
+    logger.info("Flask App Configuration:")
+    logger.info(f"GOOGLE_CLIENT_ID: {'SET' if app.config.get('GOOGLE_CLIENT_ID') else 'NOT SET'}")
+    logger.info(f"DISABLE_AUTH: {app.config.get('DISABLE_AUTH', 'False')}")
+    logger.info(f"ALLOWED_EMAILS: '{app.config.get('ALLOWED_EMAILS', '')}'")
+    logger.info("=" * 50)
     
     # Register blueprints
     app.register_blueprint(account_bp, url_prefix='/api/account')
