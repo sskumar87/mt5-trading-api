@@ -95,4 +95,3 @@ coverage.xml
 # Testing
 .pytest_cache/
 .tox/
-.env.example

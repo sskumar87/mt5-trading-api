@@ -38,5 +38,9 @@ class Config:
 
     # Google OAuth Configuration
     GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
-    DISABLE_AUTH = os.environ.get('DISABLE_AUTH', 'False')
+    ENABLE_AUTH = os.environ.get('ENABLE_AUTH', 'False')
     ALLOWED_EMAILS = os.environ.get('ALLOWED_EMAILS', '')
+
+    # JWT Configuration
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')
+    JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', 30 * 24 * 60 * 60))  # 30 days in seconds

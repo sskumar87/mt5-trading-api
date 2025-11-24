@@ -13,6 +13,7 @@ from routes.account_routes import account_bp
 from routes.trading_routes import trading_bp
 from routes.market_data_routes import market_data_bp
 from routes.range_routes import range_bp
+from routes.auth_routes import auth_bp
 
 # Import error handlers
 from utils.error_handlers import register_error_handlers
@@ -52,11 +53,12 @@ def create_app():
     logger.info("=" * 50)
     logger.info("Flask App Configuration:")
     logger.info(f"GOOGLE_CLIENT_ID: {'SET' if app.config.get('GOOGLE_CLIENT_ID') else 'NOT SET'}")
-    logger.info(f"DISABLE_AUTH: {app.config.get('DISABLE_AUTH', 'False')}")
+    logger.info(f"ENABLE_AUTH: {app.config.get('ENABLE_AUTH', 'False')}")
     logger.info(f"ALLOWED_EMAILS: '{app.config.get('ALLOWED_EMAILS', '')}'")
     logger.info("=" * 50)
     
     # Register blueprints
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(account_bp, url_prefix='/api/account')
     app.register_blueprint(trading_bp, url_prefix='/api/trading')
     app.register_blueprint(market_data_bp, url_prefix='/api/market')
